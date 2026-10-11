@@ -19,6 +19,10 @@ export class StubBot {
     report("Abriendo la lista de álbumes"); await this.wait(0.5);
     for (const n of [1, 2]) { report(`Leyendo la lista de álbumes: página ${n}`); await this.wait(0.3); }
   }
+  async albumSearch(_q: string) {
+    await this.wait(0.3);
+    return [{ album: "SEP7IMO DIA", artista: "Soda Stereo" }, { album: "Lo Esencial", artista: "Soda Stereo" }, { album: "Lo Esencial", artista: "Otro Artista" }];
+  }
   async songs(_q: string) {
     await this.wait(0.3);
     return [{ id: "11", titulo: "En la Ciudad de la Furia", artista: "Soda Stereo", album: "Doble Vida" },

@@ -52,6 +52,9 @@ modo inline del bot (sin el prefijo `.art`), que además de canciones devuelve �
 - **En la web**: escribe el artista y, en el segundo campo, el álbum. Se abre su ficha con las
   canciones y «Descargar álbum». «Ver todos sus álbumes» carga la lista completa como antes.
   Si dejas el álbum vacío, todo funciona como siempre.
+- **Solo el álbum, sin artista**: deja el artista vacío y escribe el álbum. Sale la lista de álbumes
+  con ese título que encuentra el bot, de cualquier artista; al elegir uno se abre su ficha como
+  arriba. Buscar es solo una consulta al bot: no envía nada al chat.
 - **Sin cambiar nada**: abrir un álbum desde la lista o descargarlo también usa la búsqueda
   directa (`/api/tracks`, `/api/download`, `npm run cli -- tracks` y `download`). En la web usa el
   nombre del artista que da el bot, aunque lo hayas escrito distinto.
@@ -130,7 +133,7 @@ Si el bot no reacciona ni insistiendo, el error sale en menos de un minuto (3 pu
 npm test
 ```
 
-180 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
+181 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
 nombres engañosos ("Quiero Más", "Back in Black"), discografía con BACK, espera tras GET ALL,
 traducción de mensajes de GramJS y las peticiones que se envían a Telegram.
 Fase 2: descargas en secuencia y hasta 5 a la vez (con cambio en caliente y orden por álbum),

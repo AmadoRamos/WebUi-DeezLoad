@@ -16,7 +16,7 @@ import { DownloadJob, Downloader, MAX_PARALLEL, Mutex } from "./downloads.js";
 import * as songs from "./songs.js";
 import type { Transport } from "./types.js";
 
-export type BotApi = Pick<Bot, "songs" | "songFile" | "artists" | "albums" | "albumTracks" | "albumCardId" | "albumCardDirect" | "albumCardInList" | "backToList" | "collectGetAll">;
+export type BotApi = Pick<Bot, "albumSearch" | "songs" | "songFile" | "artists" | "albums" | "albumTracks" | "albumCardId" | "albumCardDirect" | "albumCardInList" | "backToList" | "collectGetAll">;
 
 export interface AppOptions {
   transport: Transport;       // para bajar los archivos
@@ -136,6 +136,11 @@ export class App {
     if (path === "/api/canciones") {   // solo la consulta inline: no espera turno con el bot
       allow(method, "GET");
       try { return await bot.songs(qstr(q, "q")); }
+      catch (e) { throw new HttpError(502, (e as Error)?.message || String(e)); }
+    }
+    if (path === "/api/albumes") {     // álbumes por título, de cualquier artista (solo la consulta inline)
+      allow(method, "GET");
+      try { return await bot.albumSearch(qstr(q, "q")); }
       catch (e) { throw new HttpError(502, (e as Error)?.message || String(e)); }
     }
     if (path === "/api/cancion") {     // descarga una canción suelta: el bot envía su archivo al elegirla

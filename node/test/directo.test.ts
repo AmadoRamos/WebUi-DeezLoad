@@ -84,3 +84,19 @@ it("canciones: solo las canciones (no los álbumes), con artista y álbum; elegi
   assert.deepEqual(fb.sent, ["111"]);
   await assert.rejects(bot.songFile("tu eres ajena", "999"), /ya no muestra esa canción/);
 });
+
+it("álbumes por título: los de cualquier artista, sin «(Album)» y aunque vengan recortados", async () => {
+  class AlbumBot extends FakeBot {
+    override async inlineQuery(): ReturnType<FakeBot["inlineQuery"]> {
+      return { queryId: 1, results: [
+        { id: "1", title: "Tu Eres Ajena", description: "Artist: Eddy Herrera\nAlbum: Exitos De" },
+        { id: "n1", title: "Exitos De (Album)", description: "Eddy Herrera" },
+        { id: "n2", title: "Recordar Es Vivir, Vol. 6. Música de Guatemala para…", description: "FM de Zacapa" },
+      ] };
+    }
+  }
+  assert.deepEqual(await new Bot(new AlbumBot([], "edit", ["⬅️", "➡️"]), fast).albumSearch("exitos"), [
+    { album: "Exitos De", artista: "Eddy Herrera" },
+    { album: "Recordar Es Vivir, Vol. 6. Música de Guatemala para…", artista: "FM de Zacapa" },
+  ]);
+});

@@ -320,7 +320,7 @@
       <label><input type="radio" name="mode" value="cancion"> Canción</label>
     </div>
     <input id="artist" type="search" placeholder="Escribe un artista, p. ej. Soda Stereo" autocomplete="off" aria-label="Artista" />
-    <input id="album" type="search" placeholder="Álbum (opcional, lo abre directo)" autocomplete="off" aria-label="Álbum (opcional)" />
+    <input id="album" type="search" placeholder="Álbum (con o sin artista)" autocomplete="off" aria-label="Álbum (opcional; también solo el álbum)" />
     <button class="btn" id="go" type="submit">Buscar</button>
   </form>
   <div class="activity" id="activity" role="status" aria-live="polite"></div>
@@ -457,6 +457,7 @@ async function jpost(url, body) {
 const API = {
   config: () => jget("/api/config"),
   artists: (q) => jget(`/api/artistas?q=${encodeURIComponent(q)}`),
+  albumSearch: (q) => jget(`/api/albumes?q=${encodeURIComponent(q)}`),
   songs: (q) => jget(`/api/canciones?q=${encodeURIComponent(q)}`),
   downloadSong: (body) => jpost("/api/cancion", body),
   albums: (artist, index = 0) => jget(`/api/albums?artist=${encodeURIComponent(artist)}&index=${index}`),
@@ -906,6 +907,7 @@ async function loadConfig() {
 async function search(ev) {
   ev?.preventDefault();
   const artist = $("#artist").value.trim();
+  if (!artist && !songMode() && $("#album").value.trim()) return searchAlbums($("#album").value.trim());
   if (!artist) { $("#artist").focus(); return; }
   if (songMode()) return searchSongs(artist);
   state.artist = artist; state.index = 0; state.query = "";
@@ -957,6 +959,34 @@ async function searchSongs(q) {
     if (state.query !== q) return;
     found.forEach((i) => { const b = $(`.songs button[data-i="${i}"]`); if (b) { b.disabled = true; b.textContent = "Ya la tienes"; } });
   } catch (e) { /* sin marcar */ }
+}
+
+// --- Álbum sin artista: el bot da álbumes con ese título de cualquier artista; al elegir uno se
+// abre su ficha como siempre (búsqueda directa con ese título y ese artista).
+async function searchAlbums(q) {
+  state.artist = ""; state.query = q;
+  document.body.classList.add("searched");
+  $("#go").disabled = true;
+  $("#results").innerHTML = `<div class="loading">${liveHTML({ head: `Buscando el álbum «${q}»`, step: "Pidiendo al bot los álbumes con ese título…" })}</div>`;
+  let found;
+  try { found = await API.albumSearch(q); }
+  catch (e) {
+    if (state.query === q) $("#results").innerHTML = `<p class="error">No se pudo buscar «${esc(q)}»: ${esc(/not found/i.test(e.message) ? "la búsqueda de álbumes sin artista solo está en la versión Node." : e.message)}</p>`;
+    return;
+  } finally { $("#go").disabled = false; }
+  if (state.query !== q) return;
+  if (!found.length) { $("#results").innerHTML = `<p class="loading">No encontramos álbumes con «${esc(q)}». Prueba con otra forma del título o añade el artista.</p>`; return; }
+  $("#results").innerHTML = `<div class="artist"><h2>Álbumes</h2><p>${plural(found.length, "resultado", "resultados")} para «${esc(q)}»</p></div>
+    <ul class="pick">${found.map((a, i) => `<li><button type="button" data-i="${i}"><b>${esc(a.album)}</b><span>${esc(a.artista)}</span></button></li>`).join("")}</ul>`;
+  $$(".pick button", $("#results")).forEach((b) => (b.onclick = () => openFoundAlbum(b, found[b.dataset.i])));
+}
+
+function openFoundAlbum(b, a) {
+  state.artist = a.artista; state.artistName = a.artista; state.index = 0; state.sections = {};
+  loadCovers(a.artista, null, [a.album]).then(() => {
+    if (state.album === a.album) { refreshFacts(); loadDetails(a.album).then(refreshFacts); applyCovers($("#sheet")); }
+  });
+  openAlbum(b, a.album);
 }
 
 async function downloadSong(q, s, b) {

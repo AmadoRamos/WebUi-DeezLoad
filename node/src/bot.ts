@@ -475,6 +475,15 @@ export class Bot {
     });
   }
 
+  /** Álbumes que da el bot al buscar `query` (de cualquier artista; solo la consulta inline).
+   *  Son los resultados sin "Artist: …": título "… (Album)" (o recortado con "…") y el artista
+   *  como descripción. Se abren con albumTracks(artista, álbum): la búsqueda directa. */
+  async albumSearch(query: string) {
+    const res = await this.t.inlineQuery(query);
+    return res.results.flatMap((r) => (/artist\s*:/i.test(r.description ?? "") || !r.title ? []
+      : [{ album: r.title.replace(/\s*\(Album\)$/, ""), artista: (r.description ?? "").trim() }]));
+  }
+
   /** Elige la canción `id` de la búsqueda `query`: el bot envía directamente su archivo. */
   async songFile(query: string, id: string): Promise<Msg[]> {
     const res = await this.t.inlineQuery(query);

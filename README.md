@@ -9,7 +9,7 @@ pistas (GET ALL) y descarga los archivos a una carpeta.
   en vivo, reintentos y descarga de discografías completas (con pausa, reanudar y cancelar).
 - **Búsqueda directa de álbum**: escribe artista y álbum y se abre al momento, sin recorrer la lista
   de álbumes del artista (con muchos álbumes, de ~2 min a ~12 s; versión Node).
-- **Canciones sueltas**: busca por título y descarga solo esa canción (versión Node).
+- **Búsqueda por título**: álbumes sin saber el artista y canciones sueltas (versión Node).
 - **Sin duplicados**: las canciones que ya están en la carpeta no se vuelven a bajar, aunque el nombre
   cambie (tildes, ñ, "(Album Version)", signos).
 - **Resistente a un bot lento**: reconoce qué está mostrando el bot y se recupera solo cuando tarda o
