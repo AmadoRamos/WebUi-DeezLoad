@@ -30,6 +30,17 @@ distinguir mayúsculas ni tildes), se usa ese aunque no sea el primero del bot. 
 «soda», o un nombre mal escrito), la web muestra los artistas que encontró el bot, con sus álbumes
 y seguidores, para que elijas. Es solo una consulta al bot: no envía nada al chat.
 
+## Buscar una canción
+
+En la web, elige «Canción» encima del buscador y escribe el título (y el artista, si quieres
+acotar). Sale la lista de canciones que encuentra el bot, de cualquier artista, con su artista y
+álbum; las que ya tienes en tu carpeta aparecen como «Ya la tienes». Buscar es solo una consulta
+al bot: no envía nada al chat.
+
+«Descargar» elige esa canción en el bot, que envía su archivo directamente (unos 8 s), y se baja
+como cualquier descarga: avance en la bandeja, «ya estaba» si la tienes y reintento si falla.
+Solo se muestran las canciones de la primera página de resultados del bot (unas 25).
+
 ## Búsqueda directa de álbum
 
 Para abrir un álbum hacía falta buscar al artista, pulsar ALBUMS y recorrer todas las páginas de la
@@ -119,7 +130,7 @@ Si el bot no reacciona ni insistiendo, el error sale en menos de un minuto (3 pu
 npm test
 ```
 
-178 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
+180 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
 nombres engañosos ("Quiero Más", "Back in Black"), discografía con BACK, espera tras GET ALL,
 traducción de mensajes de GramJS y las peticiones que se envían a Telegram.
 Fase 2: descargas en secuencia y hasta 5 a la vez (con cambio en caliente y orden por álbum),

@@ -60,6 +60,21 @@
   .pick b { font-size: 17px; }
   .pick span { color: var(--dim); font-size: 13.5px; }
   @media (max-width: 640px) { .pick { margin: 16px 16px 0; } }
+  /* Qué buscar: artista o álbum / canción */
+  .modes { flex-basis: 100%; display: flex; gap: 8px; }
+  .modes label { position: relative; padding: 6px 16px; border-radius: 999px; background: var(--deep); cursor: pointer; font-size: 14px; font-weight: 600; }
+  .modes input { position: absolute; opacity: 0; pointer-events: none; }
+  .modes label:has(input:checked) { background: var(--sun); color: var(--sun-ink); }
+  .modes label:has(input:focus-visible) { outline: 3px solid var(--sun); outline-offset: 3px; }
+  /* Resultados de canciones */
+  .songs { list-style: none; margin: 20px 32px 0; padding: 0; display: grid; gap: 8px; max-width: 780px; }
+  .songs li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 12px 12px 20px;
+              border-radius: 16px; background: var(--deep); }
+  .songs li div { min-width: 0; display: flex; flex-direction: column; }
+  .songs b { font-size: 16px; }
+  .songs span { color: var(--dim); font-size: 13.5px; }
+  .songs .btn { flex: none; padding: 10px 18px; }
+  @media (max-width: 640px) { .songs { margin: 16px 16px 0; } }
   .loading, .error { padding: 24px 32px; color: var(--dim); display: flex; gap: 10px; align-items: center; margin: 0; }
   .error { color: var(--err); }
   .spin { width: 16px; height: 16px; border: 2px solid var(--deep); border-top-color: var(--sun);
@@ -300,6 +315,10 @@
 <section class="hero">
   <h1>¿Qué disco quieres tener hoy?</h1>
   <form class="search" id="searchForm" role="search">
+    <div class="modes" role="radiogroup" aria-label="Qué buscar">
+      <label><input type="radio" name="mode" value="artista" checked> Artista o álbum</label>
+      <label><input type="radio" name="mode" value="cancion"> Canción</label>
+    </div>
     <input id="artist" type="search" placeholder="Escribe un artista, p. ej. Soda Stereo" autocomplete="off" aria-label="Artista" />
     <input id="album" type="search" placeholder="Álbum (opcional, lo abre directo)" autocomplete="off" aria-label="Álbum (opcional)" />
     <button class="btn" id="go" type="submit">Buscar</button>
@@ -438,6 +457,8 @@ async function jpost(url, body) {
 const API = {
   config: () => jget("/api/config"),
   artists: (q) => jget(`/api/artistas?q=${encodeURIComponent(q)}`),
+  songs: (q) => jget(`/api/canciones?q=${encodeURIComponent(q)}`),
+  downloadSong: (body) => jpost("/api/cancion", body),
   albums: (artist, index = 0) => jget(`/api/albums?artist=${encodeURIComponent(artist)}&index=${index}`),
   // name: el nombre que dio el bot (búsqueda directa del álbum); artist + index eligen al artista en el bot
   tracks: (artist, album, index = 0, name = "") =>
@@ -886,7 +907,8 @@ async function search(ev) {
   ev?.preventDefault();
   const artist = $("#artist").value.trim();
   if (!artist) { $("#artist").focus(); return; }
-  state.artist = artist; state.index = 0;
+  if (songMode()) return searchSongs(artist);
+  state.artist = artist; state.index = 0; state.query = "";
   document.body.classList.add("searched");
   const album = $("#album").value.trim();
   if (album) return searchAlbum(artist, album);
@@ -903,6 +925,52 @@ async function search(ev) {
     await loadArtist(found[0]?.index ?? 0);
   } finally { $("#go").disabled = false; }
 }
+// --- Canción por título: el bot da canciones de cualquier artista; al elegir una, envía su archivo.
+const songMode = () => $("input[name=mode]:checked").value === "cancion";
+function setMode() {
+  const song = songMode();
+  $("#album").hidden = song;
+  $("#artist").placeholder = song ? "Título de la canción (y el artista, si quieres)" : "Escribe un artista, p. ej. Soda Stereo";
+  $("#artist").setAttribute("aria-label", song ? "Canción" : "Artista");
+}
+
+async function searchSongs(q) {
+  state.artist = ""; state.query = q;
+  document.body.classList.add("searched");
+  $("#go").disabled = true;
+  $("#results").innerHTML = `<div class="loading">${liveHTML({ head: `Buscando «${q}»`, step: "Pidiendo al bot las canciones…" })}</div>`;
+  let songs;
+  try { songs = await API.songs(q); }
+  catch (e) {
+    if (state.query === q) $("#results").innerHTML = `<p class="error">No se pudo buscar «${esc(q)}»: ${esc(/not found/i.test(e.message) ? "la búsqueda de canciones solo está en la versión Node." : e.message)}</p>`;
+    return;
+  } finally { $("#go").disabled = false; }
+  if (state.query !== q) return;
+  if (!songs.length) { $("#results").innerHTML = `<p class="loading">No encontramos canciones con «${esc(q)}». Prueba con otra forma del título.</p>`; return; }
+  $("#results").innerHTML = `<div class="artist"><h2>Canciones</h2><p>${plural(songs.length, "resultado", "resultados")} para «${esc(q)}»</p></div>
+    <ul class="songs">${songs.map((s, i) => `<li><div><b>${esc(s.titulo)}</b><span>${esc([s.artista, s.album].filter(Boolean).join(" · "))}</span></div>
+      <button type="button" class="btn" data-i="${i}">Descargar</button></li>`).join("")}</ul>`;
+  $$(".songs button", $("#results")).forEach((b) => (b.onclick = () => downloadSong(q, songs[b.dataset.i], b)));
+  // Las que ya están en la carpeta (por artista y título, como en los álbumes)
+  try {
+    const found = (await API.existing(q, songs.map((s) => ({ titulo: s.titulo, artista: s.artista })))).existentes || [];
+    if (state.query !== q) return;
+    found.forEach((i) => { const b = $(`.songs button[data-i="${i}"]`); if (b) { b.disabled = true; b.textContent = "Ya la tienes"; } });
+  } catch (e) { /* sin marcar */ }
+}
+
+async function downloadSong(q, s, b) {
+  b.disabled = true; b.textContent = "Añadiendo…"; b.title = "";
+  try {
+    await API.downloadSong({ q, id: s.id, titulo: s.titulo, artista: s.artista });
+    b.textContent = "Añadida";
+    setDock(true);
+    refreshJobs();
+  } catch (e) {
+    b.disabled = false; b.textContent = "Reintentar"; b.title = `No se pudo descargar: ${e.message}`;
+  }
+}
+
 const plainName = (s) => (s || "").normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().trim();
 
 // Varios artistas posibles: lista para elegir (con álbumes y seguidores, para distinguir a los homónimos).
@@ -1477,6 +1545,8 @@ async function savePar(n) {
 }
 
 $("#searchForm").addEventListener("submit", search);
+$$("input[name=mode]").forEach((r) => (r.onchange = setMode));
+setMode();  // el navegador puede recordar la opción al recargar
 $("#dockBar").onclick = () => setDock(!$("#dock").classList.contains("expanded"));
 $("#sheetClose").onclick = closeSheet;
 $("#scrim").onclick = closeSheet;

@@ -61,3 +61,26 @@ it("artistas: nombre, álbumes y seguidores de cada resultado, con el índice pa
   assert.deepEqual(list, [{ index: 0, nombre: "Soda", albumes: 159, seguidores: 293 },
                           { index: 1, nombre: "Soda Stereo", albumes: 22, seguidores: 1774511 }]);
 });
+
+class SongBot extends FakeBot {
+  sent: string[] = [];
+  override async inlineQuery(): ReturnType<FakeBot["inlineQuery"]> {
+    return { queryId: 1, results: [{ id: "111", title: "Tu Eres Ajena", description: "Artist: Eddy Herrera\nAlbum: Exitos De" },
+                                   { id: "n1", title: "Exitos De (Album)", description: "Eddy Herrera" }] };
+  }
+  override async sendInlineResult(_q?: unknown, id = "") {
+    this.sent.push(id);
+    Object.assign(this.newMsg(), { out: true, viaBot: true, hasDocument: true,
+      media: { kind: "document", size: 1, file_name: "Eddy Herrera - Tu Eres Ajena.flac" } });
+  }
+}
+
+it("canciones: solo las canciones (no los álbumes), con artista y álbum; elegir una trae su archivo", async () => {
+  const fb = new SongBot([], "edit", ["⬅️", "➡️"]);
+  const bot = new Bot(fb, fast);
+  assert.deepEqual(await bot.songs("tu eres ajena"), [{ id: "111", titulo: "Tu Eres Ajena", artista: "Eddy Herrera", album: "Exitos De" }]);
+  const [file] = await bot.songFile("tu eres ajena", "111");
+  assert.equal((file.media as { file_name?: string }).file_name, "Eddy Herrera - Tu Eres Ajena.flac");
+  assert.deepEqual(fb.sent, ["111"]);
+  await assert.rejects(bot.songFile("tu eres ajena", "999"), /ya no muestra esa canción/);
+});

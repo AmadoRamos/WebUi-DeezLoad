@@ -133,6 +133,8 @@ export class DownloadJob {
   discography: string | null = null;
   /** name: el nombre del artista que dio el bot (para la búsqueda directa), si se conoce. */
   constructor(public artist: string, public album: string, public index = 0, public name?: string) {}
+  /** Cómo pedir las pistas, si no es buscar el álbum (p. ej. una canción suelta); también al reintentar. */
+  getAudios?: GetAudios;
 
   /** Lo deja como nuevo para reintentarlo en su mismo lugar (lo ya guardado se salta). */
   resetForRetry() {
@@ -200,6 +202,7 @@ export class Downloader {
   /** Crea y lanza la descarga de un álbum. */
   start(artist: string, album: string, index = 0, getAudios?: GetAudios, name?: string): DownloadJob {
     const job = new DownloadJob(artist.trim(), album.trim(), index, name?.trim() || undefined);
+    job.getAudios = getAudios;
     this.jobs.set(job.id, job);
     this.notify();
     void this.runJob(job, getAudios);
@@ -220,7 +223,7 @@ export class Downloader {
     job.status = "running";
     this.notify();
     try {
-      const audios = await this.queue.run("descarga", job.album, () => (getAudios ?? this.singleAudios)(job),
+      const audios = await this.queue.run("descarga", job.album, () => (getAudios ?? job.getAudios ?? this.singleAudios)(job),
                                           (s) => { job.step = s; });
       job.step = null;
       if (!audios.length) throw new Error("El bot no envió pistas para este álbum.");

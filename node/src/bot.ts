@@ -464,6 +464,30 @@ export class Bot {
     return (await this.waitSettled(before)).map(snapshot);
   }
 
+  // ------------------------------------------------------------------ Canciones ---
+  /** Canciones que da el bot al buscar `query` (solo la consulta inline: no envía nada al chat).
+   *  El bot mezcla canciones ("Artist: …\nAlbum: …") y álbumes ("… (Album)"); solo las canciones. */
+  async songs(query: string) {
+    const res = await this.t.inlineQuery(query);
+    return res.results.flatMap((r) => {
+      const artist = /artist\s*:\s*(.+)/i.exec(r.description ?? ""), album = /album\s*:\s*(.+)/i.exec(r.description ?? "");
+      return artist ? [{ id: r.id, titulo: r.title ?? "", artista: artist[1].trim(), album: album?.[1].trim() ?? "" }] : [];
+    });
+  }
+
+  /** Elige la canción `id` de la búsqueda `query`: el bot envía directamente su archivo. */
+  async songFile(query: string, id: string): Promise<Msg[]> {
+    const res = await this.t.inlineQuery(query);
+    if (!res.results.some((r) => r.id === id)) throw new Error("El bot ya no muestra esa canción; búscala otra vez.");
+    report("Pidiendo la canción al bot");
+    this.log(`pide la canción ${id} de «${query}»`);
+    const before = await this.t.lastId();
+    await this.t.sendInlineResult(res.queryId, id);
+    const got = await this.awaitReply(before, null, "", (m) => m.hasDocument, this.c.filesWait * 1000);
+    if (!got?.ok) throw new Error("El bot no envió la canción.");
+    return [got.msg];
+  }
+
   // ------------------------------------------------------------------- Artista ---
   /** Artistas que da el bot al buscar `query` (solo la consulta inline: no envía nada al chat).
    *  `index` es el que se pasa a albums/albumTracks… para elegirlo. */

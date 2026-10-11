@@ -237,3 +237,13 @@ it("avisa mientras comprueba qué canciones ya están y quita el aviso al termin
   assert.equal(job.step, null);
   assert.deepEqual(job.tracks.map((t) => t.status), ["exists", "done"]);
 });
+
+it("canción suelta: al reintentar vuelve a pedir la canción, no un álbum", async () => {
+  let asks = 0;
+  const job = dl.start("Artista", "Tema", 0, async () => (++asks === 1 ? [] : album("T", 1)()));
+  while (job.status !== "error") await sleep(5);
+  await dl.retry(job.id);
+  assert.equal(asks, 2);
+  assert.equal(job.status, "completed");
+  assert.equal(job.tracks.length, 1);
+});

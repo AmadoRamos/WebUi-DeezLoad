@@ -19,6 +19,17 @@ export class StubBot {
     report("Abriendo la lista de álbumes"); await this.wait(0.5);
     for (const n of [1, 2]) { report(`Leyendo la lista de álbumes: página ${n}`); await this.wait(0.3); }
   }
+  async songs(_q: string) {
+    await this.wait(0.3);
+    return [{ id: "11", titulo: "En la Ciudad de la Furia", artista: "Soda Stereo", album: "Doble Vida" },
+            { id: "12", titulo: "En la Ciudad de la Furia", artista: "Tributo Rock", album: "Homenaje" }];
+  }
+  async songFile(_q: string, id: string): Promise<Msg[]> {
+    report("Pidiendo la canción al bot"); await this.wait(0.5);
+    const artist = id === "11" ? "Soda Stereo" : "Tributo Rock";
+    return [{ id: 2000 + Number(id), text: "", buttons: [], out: false, viaBot: true, editDate: 0, hasDocument: true, raw: { album: `cancion ${id}`, i: 0 },
+              media: { kind: "document", size: 3_000_000, file_name: `${artist} - En la Ciudad de la Furia.flac`, title: "En la Ciudad de la Furia" } }];
+  }
   async artists(_q: string) {
     await this.wait(0.3);
     return [{ index: 0, nombre: "Soda", albumes: 159, seguidores: 293 }, { index: 1, nombre: "Soda", albumes: 41, seguidores: 2 },
