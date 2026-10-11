@@ -228,8 +228,13 @@ export class Downloader {
         title: info.title || info.file_name || `Pista ${i + 1}`, file_name: info.file_name ?? null,
         size: info.size || 0, progress: 0, status: "pending", path: null, file: null,
       }));
+      // Aviso mientras se comprueba qué canciones ya están (suele ser al momento; tarda si la
+      // misma canción se está bajando en otra descarga). Se quita cuando todas pasaron.
+      let unchecked = job.tracks.length;
+      job.step = "Comprobando qué canciones ya tienes en tu carpeta…";
       this.notify();
-      await Promise.all(audios.map((m, i) => this.fetchTrack(job, i, m, infos[i])));
+      const checked = () => { if (--unchecked === 0) { job.step = null; this.notify(); } };
+      await Promise.all(audios.map((m, i) => this.fetchTrack(job, i, m, infos[i], checked)));
       const failed = job.tracks.filter((t) => t.status === "error");
       if (failed.length) {
         job.status = "error";
@@ -258,7 +263,7 @@ export class Downloader {
     return existsSync(target) ? basename(target) : null;  // nombres sin el formato 'Artista - Título'
   }
 
-  private async fetchTrack(job: DownloadJob, i: number, m: Msg, info: Partial<DocInfo>): Promise<void> {
+  private async fetchTrack(job: DownloadJob, i: number, m: Msg, info: Partial<DocInfo>, checked = () => {}): Promise<void> {
     const track = job.tracks[i];
     const target = join(this.downloadsDir, safeName(info.file_name, `${m.id}.bin`));
     const part = `${target}.part`;
@@ -269,7 +274,8 @@ export class Downloader {
     if (!this.fileLocks.has(key)) this.fileLocks.set(key, new Mutex());
     try {
       await this.fileLocks.get(key)!.run(async () => {
-        const existing = this.findExisting(info, target);
+        let existing: string | null;
+        try { existing = this.findExisting(info, target); } finally { checked(); }
         if (existing) {
           const size = statSync(join(this.downloadsDir, existing)).size;
           Object.assign(track, { status: "exists", file: existing, path: join(this.downloadsDir, existing), size, progress: size });

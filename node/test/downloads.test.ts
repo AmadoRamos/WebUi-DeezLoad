@@ -226,3 +226,14 @@ describe("ajustes", () => {
     assert.equal(d.slots.limit, 3);
   });
 });
+
+it("avisa mientras comprueba qué canciones ya están y quita el aviso al terminar", async () => {
+  const steps: (string | null)[] = [];
+  const job = new DownloadJob("Artista", "E");
+  const d = new Downloader(files as unknown as Transport, fakeBot, dir, settings, () => steps.push(job.step));
+  writeFileSync(join(dir, "E-0.flac"), "ya estaba");
+  await d.runJob(job, album("E", 2));
+  assert.ok(steps.includes("Comprobando qué canciones ya tienes en tu carpeta…"));
+  assert.equal(job.step, null);
+  assert.deepEqual(job.tracks.map((t) => t.status), ["exists", "done"]);
+});

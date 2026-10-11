@@ -401,10 +401,10 @@ function secName(s) { return SECTION_NAMES[(s || "").trim().toLowerCase()] || s;
 // pide las pistas al bot o espera a que termine otra descarga.
 function jobView(j) {
   const downloading = (j.tracks || []).some((t) => t.status === "downloading");
+  if (j.status === "running" && j.paso && !downloading)   // también "Comprobando qué canciones ya tienes…"
+    return { status: "running", label: "Preparando", stats: j.paso };
   if (j.status === "running" && !j.total)
-    return j.paso
-      ? { status: "running", label: "Preparando", stats: j.paso }
-      : { status: "queued", label: "En espera", stats: "Esperando su turno con el bot…" };
+    return { status: "queued", label: "En espera", stats: "Esperando su turno con el bot…" };
   if (j.status === "running" && !downloading && !j.done)
     return { status: "queued", label: "En espera", stats: `${plural(j.total, "pista", "pistas")}, empieza al terminar la descarga anterior` };
   return { status: j.status, label: label(j.status), stats: null };
@@ -990,12 +990,15 @@ function renderTracks(album, data) {
 
 // Canciones que ya están en la carpeta de descargas (por artista y título).
 async function markExisting(album, tracks) {
+  const note = $("#haveNote");
+  note.textContent = "Comprobando si ya tienes estas canciones en tu carpeta…";
+  note.hidden = false;
   let found = [];
-  try { found = (await API.existing(state.artistName || state.artist, tracks)).existentes || []; } catch (e) { return; }
-  if (state.album !== album || !found.length) return;
+  try { found = (await API.existing(state.artistName || state.artist, tracks)).existentes || []; } catch (e) { note.hidden = true; return; }
+  if (state.album !== album) return;
+  if (!found.length) { note.textContent = "Ninguna de estas canciones está en tu carpeta todavía."; return; }
   const items = $$("#sheetBody .tracks li");
   found.forEach((i) => items[i]?.classList.add("have"));
-  const note = $("#haveNote");
   const missing = tracks.length - found.length;
   note.textContent = missing
     ? `${found.length} de ${tracks.length} canciones ya están en tu carpeta. Al descargar ${missing === 1 ? "se baja solo la que falta" : `se bajan solo las ${missing} que faltan`}.`
