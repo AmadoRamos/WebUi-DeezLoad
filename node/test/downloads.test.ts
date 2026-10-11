@@ -44,6 +44,7 @@ const album = (name: string, n: number, nameOf = (i: number) => `${name}-${i}.fl
 let files: FakeFiles, dl: Downloader, dir: string, settings: string, emptyOnce: Set<string>;
 const fakeBot = {
   albumCardId: async (_artist: string, alb: string) => [alb, null],
+  cardTracks: async () => null,
   collectGetAll: async (card: string) => {
     if (emptyOnce.has(card)) { emptyOnce.delete(card); return []; }
     return (await album(card, 3)());
@@ -246,4 +247,56 @@ it("canción suelta: al reintentar vuelve a pedir la canción, no un álbum", as
   assert.equal(asks, 2);
   assert.equal(job.status, "completed");
   assert.equal(job.tracks.length, 1);
+});
+
+describe("álbum con canciones que ya tienes", () => {
+  let asked: string[], getAll: number, failOne: boolean;
+  const TITLES = ["Uno", "Dos", "Tres"];
+  const partialBot = {
+    albumCardId: async () => [1, null],
+    cardTracks: async () => ({ album: "Disco", artista: "Artista", pistas: TITLES.map((t, i) => ({ n: i + 1, titulo: t, artista: "Artista", duracion: "0:03:00" })) }),
+    albumTrackFile: async (_a: string[], _album: string, title: string) => {
+      if (failOne) throw new Error("El bot no encontró esa canción.");
+      asked.push(title);
+      return [doc("Disco", TITLES.indexOf(title), `Artista - ${title}.flac`)];
+    },
+    collectGetAll: async () => { getAll++; return TITLES.map((t, i) => doc("Disco", i, `Artista - ${t}.flac`)); },
+  } as unknown as Bot;
+  const run = async (have: string[], max = 10) => {
+    const d = new Downloader(files as unknown as Transport, partialBot, dir, settings);
+    d.oneByOneMax = max;
+    for (const t of have) writeFileSync(join(dir, `Artista - ${t}.flac`), "ya estaba");
+    const job = new DownloadJob("Artista", "Disco");
+    await d.runJob(job);
+    return job;
+  };
+  beforeEach(() => { asked = []; getAll = 0; failOne = false; });
+
+  it("parcial: pide una a una solo las que faltan, sin GET ALL", async () => {
+    const job = await run(["Dos"]);
+    assert.deepEqual(asked, ["Uno", "Tres"]);
+    assert.equal(getAll, 0);
+    assert.deepEqual(job.tracks.map((t) => t.status), ["done", "exists", "done"]);
+  });
+  it("todas: no pide nada al bot", async () => {
+    const job = await run(TITLES);
+    assert.deepEqual([asked, getAll], [[], 0]);
+    assert.equal(job.status, "completed");
+    assert.ok(job.tracks.every((t) => t.status === "exists"));
+  });
+  it("ninguna: GET ALL como siempre", async () => {
+    await run([]);
+    assert.deepEqual([asked, getAll], [[], 1]);
+  });
+  it("si faltan más que UNA_A_UNA_MAX, GET ALL", async () => {
+    const job = await run(["Dos"], 1);   // faltan 2, máximo 1
+    assert.deepEqual([asked, getAll], [[], 1]);
+    assert.deepEqual(job.tracks.map((t) => t.status), ["done", "exists", "done"]);
+  });
+  it("si una no se puede pedir, GET ALL (y lo que ya tienes se salta)", async () => {
+    failOne = true;
+    const job = await run(["Dos"]);
+    assert.equal(getAll, 1);
+    assert.deepEqual(job.tracks.map((t) => t.status), ["done", "exists", "done"]);
+  });
 });

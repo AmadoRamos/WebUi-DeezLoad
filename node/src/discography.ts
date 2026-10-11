@@ -79,7 +79,7 @@ export class Discography {
     // Si no sirve, la lista de siempre (se abre solo cuando hace falta).
     // (con index > 0 solo si el nombre vino del bot: el texto escrito no distingue al artista)
     const direct = this.index && this.name === this.artist ? null : await bot.albumCardDirect(this.name, job.album);
-    if (direct !== null) return bot.collectGetAll(direct);
+    if (direct !== null) return this.ctx.downloader.cardAudios(direct);
     if (this.listId === null) {
       const listing = await bot.albums(this.artist, this.index) as { list_message_id?: number; error?: string };
       if (listing.list_message_id === undefined) throw new Error(listing.error || "El bot no mostró la lista de álbumes.");
@@ -93,7 +93,7 @@ export class Discography {
       throw e;
     }
     if (card === null) throw new Error(error || "No se encontró el álbum en la lista.");
-    const audios = await bot.collectGetAll(card);
+    const audios = await this.ctx.downloader.cardAudios(card);   // GET ALL, o una a una las que faltan
     try { this.listId = await bot.backToList(card, this.listId!); } catch { this.listId = null; }
     return audios;
   };

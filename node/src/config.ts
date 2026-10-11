@@ -33,6 +33,7 @@ export const cfg = {
   retries: num("BOT_RETRIES", 2),          // reintentos (volver a pulsar, volver a empezar la búsqueda…)
   slowWait: num("SLOW_WAIT", 15),          // segundos esperando a que el bot reaccione antes de reintentar
   getAllRetries: num("GETALL_RETRIES", 1), // veces que se vuelve a pulsar GET ALL si no llega ningún archivo
+  oneByOneMax: num("UNA_A_UNA_MAX", 10),   // álbum a medias: hasta cuántas que faltan se piden una a una (si no, GET ALL)
   floodMax: num("FLOOD_MAX_WAIT", 300),    // como mucho, segundos que se espera si Telegram lo pide
   /** Carpeta de descargas (la misma que usa la versión en Python). */
   downloadsDir: (() => {

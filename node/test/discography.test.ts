@@ -4,6 +4,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, it } from "node:test";
+import type { Bot } from "../src/bot.js";
 import { Discography, type DiscBot } from "../src/discography.js";
 import { Downloader, Mutex, type DownloadJob, type GetAudios } from "../src/downloads.js";
 import type { Msg, Transport } from "../src/types.js";
@@ -16,7 +17,8 @@ const files = {
   async download(_m: Msg, path: string) { await sleep(30); writeFileSync(path, "x".repeat(100)); },
 } as unknown as Transport;
 
-const bot: DiscBot = {
+const bot: DiscBot & Pick<Bot, "cardTracks"> = {
+  cardTracks: async () => null,   // la ficha no dice sus canciones: siempre GET ALL
   albums: (async () => { calls++; await sleep(10); return { list_message_id: 1 }; }) as never,
   albumCardDirect: async (artist: string, title: string) => {
     if (!direct.has(title)) return null;

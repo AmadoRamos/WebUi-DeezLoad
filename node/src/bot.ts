@@ -131,14 +131,17 @@ export function counterOf(m: Shown): [number, number] | null {
   return null;
 }
 
-/** Título del álbum según la ficha ("💽 Album: Quiero Más"), o null si no lo dice. */
-export function albumTitleOf(m: Shown): string | null {
+/** Un dato de la ficha ("💽 Album: Quiero Más", "👤 Artist: …") por su nombre, o null. */
+export function headerOf(m: Shown, key: string): string | null {
   for (const line of (m.text || "").split(/\r?\n/)) {
     const h = HEADER_RE.exec(line);
-    if (h && h[1].trim().toLowerCase() === "album") return h[2].trim();
+    if (h && h[1].trim().toLowerCase() === key) return h[2].trim();
   }
   return null;
 }
+
+/** Título del álbum según la ficha ("💽 Album: Quiero Más"), o null si no lo dice. */
+export const albumTitleOf = (m: Shown) => headerOf(m, "album");
 
 const plain = (t: string) => t.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase()
   .replace(/(\.\.\.|…)\s*$/, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
@@ -487,25 +490,27 @@ export class Bot {
   /** Una canción de un álbum: busca «título artista» y elige la de ese título, artista y álbum
    *  (otra versión del mismo título suele estar en otro álbum). Si ninguna dice ese álbum, la
    *  única con ese título y artista. `artists`: el de la canción y el del álbum (vale cualquiera). */
-  async albumTrackFile(artists: string[], album: string, title: string): Promise<Msg[]> {
+  async albumTrackFile(artists: string[], album: string, title: string, step?: string): Promise<Msg[]> {
     const names = artists.filter(Boolean);
     const query = `${title} ${names[0] ?? ""}`.trim();
     const found = (await this.songs(query)).filter((s) => plain(s.titulo) === plain(title) && names.some((a) => plain(a) === plain(s.artista)));
     const sameAlbum = found.filter((s) => plain(s.album) === plain(album));
     const pick = sameAlbum[0] ?? (found.length === 1 ? found[0] : undefined);
     if (!pick) throw new Error(found.length ? "El bot tiene varias versiones de esa canción y ninguna de este álbum." : "El bot no encontró esa canción.");
-    return this.songFile(query, pick.id);
+    return this.songFile(query, pick.id, step);
   }
 
   /** Elige la canción `id` de la búsqueda `query`: el bot envía directamente su archivo. */
-  async songFile(query: string, id: string): Promise<Msg[]> {
+  async songFile(query: string, id: string, step = "Pidiendo la canción al bot"): Promise<Msg[]> {
     const res = await this.t.inlineQuery(query);
     if (!res.results.some((r) => r.id === id)) throw new Error("El bot ya no muestra esa canción; búscala otra vez.");
-    report("Pidiendo la canción al bot");
+    report(step);
     this.log(`pide la canción ${id} de «${query}»`);
+    const started = Date.now();   // para el registro: cuánto tarda una canción
     const before = await this.t.lastId();
     await this.t.sendInlineResult(res.queryId, id);
     const got = await this.awaitReply(before, null, "", (m) => m.hasDocument, this.c.filesWait * 1000);
+    this.log(`  canción ${got?.ok ? "recibida" : "NO recibida"} en ${Math.round((Date.now() - started) / 1000)} s`);
     if (!got?.ok) throw new Error("El bot no envió la canción.");
     return [got.msg];
   }
@@ -795,6 +800,16 @@ export class Bot {
     return direct?.reverse().find((m) => hasGetAll(m) && screenOf(m) === "album")?.message_id ?? null;
   }
 
+  /** Lo que muestra la ficha `cardId`: título del álbum, artista y canciones. null si no muestra
+   *  todas (el bot dice más pistas de las que hay en la ficha) o ninguna. */
+  async cardTracks(cardId: number): Promise<{ album: string; artista: string; pistas: Track[] } | null> {
+    const m = await this.getMsg(cardId);
+    if (!m) return null;
+    const data = parseAlbum([snapshot(m)]);
+    if (data.aviso || !data.pistas.length) return null;
+    return { album: albumTitleOf(m) ?? "", artista: headerOf(m, "artist") ?? "", pistas: data.pistas };
+  }
+
   /** Discografía: abre `title` desde una lista ya abierta. Devuelve [ficha | null, lista, error | null]. */
   async albumCardInList(listId: number, title: string): Promise<[number | null, number, string | null]> {
     const [opened, foundIn] = await this.clickInList(listId, title);
@@ -822,6 +837,7 @@ export class Bot {
     const mt = TOTAL_TRACKS_RE.exec(msg.text || "");
     const expected = mt ? Number(mt[1]) : null;
     report("Pidiendo las pistas al bot (GET ALL)");
+    const started = Date.now();   // para el registro: cuánto tarda GET ALL
     const before = await this.t.lastId();
     await this.press(messageId, btn);
     let start = Date.now(), lastChange = start, docs: Msg[] = [], presses = 1;
@@ -848,6 +864,7 @@ export class Bot {
         : `Esperando a que el bot envíe las pistas (${Math.floor((now - start) / 1000)} s)…`);
       await sleep(this.c.pollMs);
     }
+    this.log(`  GET ALL: ${docs.length}${expected ? ` de ${expected}` : ""} pistas en ${Math.round((Date.now() - started) / 1000)} s (${presses} pulsación${presses > 1 ? "es" : ""})`);
     return docs;
   }
 }

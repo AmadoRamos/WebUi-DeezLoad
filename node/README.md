@@ -45,6 +45,14 @@ Solo se muestran las canciones de la primera página de resultados del bot (unas
 esa (las que ya tienes no lo muestran). Se busca igual, por título y artista, y se elige la versión
 de ese álbum; si el bot no la tiene en ese álbum y hay varias versiones, avisa en lugar de bajar otra.
 
+**Álbumes que ya tienes en parte:** al descargar un álbum (o una discografía), si ya tienes algunas
+de sus canciones y faltan como mucho 10 (`UNA_A_UNA_MAX` en el `.env`), se piden una a una solo
+las que faltan, en lugar de GET ALL (que hace al bot enviar el álbum entero). Si ya las tienes
+todas, no se le pide nada al bot. Si faltan más de 10, o no se puede pedirlas una a una (la ficha
+no muestra todas las canciones, una no se encuentra…), se usa GET ALL como siempre y lo que ya
+tienes se salta al bajar. La tarjeta de la descarga va diciendo cuál pide («1 de 3 que faltan»).
+En `logs\bot.log` queda cuánto tardó cada canción y cada GET ALL, para ajustar ese número.
+
 ## Búsqueda directa de álbum
 
 Para abrir un álbum hacía falta buscar al artista, pulsar ALBUMS y recorrer todas las páginas de la
@@ -137,7 +145,7 @@ Si el bot no reacciona ni insistiendo, el error sale en menos de un minuto (3 pu
 npm test
 ```
 
-182 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
+188 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
 nombres engañosos ("Quiero Más", "Back in Black"), discografía con BACK, espera tras GET ALL,
 traducción de mensajes de GramJS y las peticiones que se envían a Telegram.
 Fase 2: descargas en secuencia y hasta 5 a la vez (con cambio en caliente y orden por álbum),

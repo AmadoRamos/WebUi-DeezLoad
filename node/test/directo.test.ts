@@ -119,3 +119,16 @@ it("canción de un álbum: elige la versión de ese álbum entre varias con el m
   assert.deepEqual(fb.sent, ["2", "4"]);
   await assert.rejects(bot.albumTrackFile(["Eddy Herrera"], "Otro Disco", "Tu Eres Ajena"), /varias versiones/);
 });
+
+it("canciones de la ficha: título, artista y pistas; null si el bot dice más pistas de las que muestra", async () => {
+  const fb = new FakeBot([], "edit", ["⬅️", "➡️"]);
+  const card = (total: number) => Object.assign(fb.newMsg(), {
+    text: `💽 Album: Exitos De\n👤 Artist: Eddy Herrera\n🎧 Total tracks: ${total}`,
+    buttons: [["0:05:03 | Eddy Herrera - Pegame Tu Vicio"], ["0:04:52 | Eddy Herrera - Carolina"], ["GET ALL ⬇️"]]
+      .map(([text]) => [{ text, kind: "callback" as const, data: Buffer.from(text) }]),
+  }).id;
+  const bot = new Bot(fb, fast);
+  const info = await bot.cardTracks(card(2));
+  assert.deepEqual([info?.album, info?.artista, info?.pistas.map((p) => p.titulo)], ["Exitos De", "Eddy Herrera", ["Pegame Tu Vicio", "Carolina"]]);
+  assert.equal(await bot.cardTracks(card(14)), null);
+});

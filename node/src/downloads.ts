@@ -10,7 +10,8 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
-import { safeName, withProgress, type Bot } from "./bot.js";
+import { report, safeName, withProgress, type Bot } from "./bot.js";
+import { cfg } from "./config.js";
 import * as songs from "./songs.js";
 import type { DocInfo, Msg, Transport } from "./types.js";
 
@@ -160,17 +161,26 @@ export class DownloadJob {
 
 export type GetAudios = (job: DownloadJob) => Promise<Msg[]>;
 
+/** Una pista que ya está en la carpeta, como si el bot la hubiera enviado: al bajar se reconoce
+ *  como "ya estaba" (por su nombre de archivo) y no se descarga. */
+const fileYouHave = (file: string, title: string): Msg => ({
+  id: 0, text: "", buttons: [], out: false, viaBot: false, editDate: 0, hasDocument: true,
+  media: { kind: "document", file_name: file, title, size: 0 },
+});
+
 // ---------------------------------------------------------- Descargador ---
 export class Downloader {
   jobs = new Map<string, DownloadJob>();
   settings: Settings;
   slots: FileSlots;
   queue: BotQueue;
+  /** Álbum a medias: hasta cuántas que faltan se piden una a una; si faltan más, GET ALL. */
+  oneByOneMax = cfg.oneByOneMax;
   private fileLocks = new Map<string, Mutex>();
 
   constructor(
     private t: Transport,
-    private bot: Pick<Bot, "albumCardId" | "collectGetAll">,
+    private bot: Pick<Bot, "albumCardId" | "collectGetAll" | "cardTracks" | "albumTrackFile">,
     public downloadsDir: string,
     private settingsFile: string,
     private notify: () => void = () => {},
@@ -192,12 +202,42 @@ export class Downloader {
     return {};
   }
 
-  /** Pide las pistas de un álbum suelto: busca al artista, abre el álbum y pulsa GET ALL. */
+  /** Pide las pistas de un álbum suelto: busca al artista, abre el álbum y pide las pistas. */
   private singleAudios: GetAudios = async (job) => {
     const [card, error] = await this.bot.albumCardId(job.artist, job.album, job.index, job.name);
     if (card === null) throw new Error(String((error as { error?: string })?.error || "No se encontró el álbum en el bot."));
-    return this.bot.collectGetAll(card);
+    return this.cardAudios(card);
   };
+
+  /** Pistas del álbum de la ficha `card`. Si ya tienes algunas (descarga parcial) y faltan como
+   *  mucho `oneByOneMax` (UNA_A_UNA_MAX), pide una a una
+   *  solo las que faltan en lugar de GET ALL, y las que tienes ni se piden (salen como "ya
+   *  estaba"); si las tienes todas, no se pide nada. Si no se puede (la ficha no muestra todas las
+   *  canciones, una no se encuentra…), GET ALL como siempre: lo que ya está se salta al bajar. */
+  async cardAudios(card: number): Promise<Msg[]> {
+    const info = await this.bot.cardTracks(card);
+    const index = songs.folderIndex(this.downloadsDir);
+    const have = info?.pistas.map((p) => songs.find(index, p.titulo, [p.artista, info.artista])) ?? [];
+    const missing = have.filter((h) => !h).length;
+    if (info && have.some(Boolean) && missing > this.oneByOneMax)
+      report(`Faltan ${missing} canciones (más de ${this.oneByOneMax}): pidiendo el álbum completo (GET ALL)`);
+    else if (info && have.some(Boolean)) {
+      try {
+        const out: Msg[] = [];
+        let asked = 0;
+        for (const [i, p] of info.pistas.entries()) {
+          if (have[i]) { out.push(fileYouHave(have[i]!, p.titulo)); continue; }
+          const step = `Pidiendo «${p.titulo}» al bot (${++asked} de ${missing} que faltan)`;
+          report(step);
+          out.push(...await this.bot.albumTrackFile([p.artista, info.artista], info.album, p.titulo, step));
+        }
+        return out;
+      } catch (e) {
+        report(`No se pudieron pedir una a una (${(e as Error).message}); pidiendo el álbum completo (GET ALL)`);
+      }
+    }
+    return this.bot.collectGetAll(card);
+  }
 
   /** Crea y lanza la descarga de un álbum. */
   start(artist: string, album: string, index = 0, getAudios?: GetAudios, name?: string): DownloadJob {

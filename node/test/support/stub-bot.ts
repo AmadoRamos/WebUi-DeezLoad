@@ -28,8 +28,8 @@ export class StubBot {
     return [{ id: "11", titulo: "En la Ciudad de la Furia", artista: "Soda Stereo", album: "Doble Vida" },
             { id: "12", titulo: "En la Ciudad de la Furia", artista: "Tributo Rock", album: "Homenaje" }];
   }
-  async albumTrackFile(artists: string[], album: string, title: string): Promise<Msg[]> {
-    report("Pidiendo la canción al bot"); await this.wait(0.5);
+  async albumTrackFile(artists: string[], album: string, title: string, step = "Pidiendo la canción al bot"): Promise<Msg[]> {
+    report(step); await this.wait(0.5);
     const artist = artists.find(Boolean) ?? "Soda Stereo";
     return [{ id: 3000 + this.cards.size, text: "", buttons: [], out: false, viaBot: true, editDate: 0, hasDocument: true, raw: { album: `pista ${album}`, i: 0 },
               media: { kind: "document", size: 3_000_000, file_name: `${artist} - ${title}.flac`, title } }];
@@ -62,6 +62,10 @@ export class StubBot {
     return [id, listId, null];
   }
   async albumCardDirect(_artist: string, _album: string): Promise<number | null> { return null; }  // usa la lista
+  async cardTracks(card: number) {
+    const title = this.cards.get(card);
+    return title ? { album: title, artista: "Soda Stereo", pistas: [0, 1, 2, 3].map((i) => ({ n: i + 1, titulo: `${title} - Tema ${i + 1}`, artista: "Soda Stereo", duracion: "0:03:00" })) } : null;
+  }
   async backToList(_card: number, listId: number) { report("Volviendo a la lista de álbumes"); await this.wait(0.2); return listId; }
   async albumCardId(artist: string, album: string, _index = 0): Promise<[number | null, Record<string, unknown> | null]> {
     await this.listing(artist);
