@@ -19,6 +19,11 @@ export class StubBot {
     report("Abriendo la lista de álbumes"); await this.wait(0.5);
     for (const n of [1, 2]) { report(`Leyendo la lista de álbumes: página ${n}`); await this.wait(0.3); }
   }
+  async artists(_q: string) {
+    await this.wait(0.3);
+    return [{ index: 0, nombre: "Soda", albumes: 159, seguidores: 293 }, { index: 1, nombre: "Soda", albumes: 41, seguidores: 2 },
+            { index: 2, nombre: "Soda Stereo", albumes: 22, seguidores: 1774511 }];
+  }
   async albums(artist: string, _index = 0) {
     await this.listing(artist);
     return { artista: "👤 Artist: Soda Stereo\n💽 Albums numbers: 22\n👥 Fans on Deezer: 1773909", total: 5, secciones: SECC, list_message_id: 1 };

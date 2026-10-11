@@ -131,7 +131,8 @@ export class DownloadJob {
   step: string | null = null;   // paso actual mientras se preparan las pistas
   attempts = 1;
   discography: string | null = null;
-  constructor(public artist: string, public album: string, public index = 0) {}
+  /** name: el nombre del artista que dio el bot (para la búsqueda directa), si se conoce. */
+  constructor(public artist: string, public album: string, public index = 0, public name?: string) {}
 
   /** Lo deja como nuevo para reintentarlo en su mismo lugar (lo ya guardado se salta). */
   resetForRetry() {
@@ -191,14 +192,14 @@ export class Downloader {
 
   /** Pide las pistas de un álbum suelto: busca al artista, abre el álbum y pulsa GET ALL. */
   private singleAudios: GetAudios = async (job) => {
-    const [card, error] = await this.bot.albumCardId(job.artist, job.album, job.index);
+    const [card, error] = await this.bot.albumCardId(job.artist, job.album, job.index, job.name);
     if (card === null) throw new Error(String((error as { error?: string })?.error || "No se encontró el álbum en el bot."));
     return this.bot.collectGetAll(card);
   };
 
   /** Crea y lanza la descarga de un álbum. */
-  start(artist: string, album: string, index = 0, getAudios?: GetAudios): DownloadJob {
-    const job = new DownloadJob(artist.trim(), album.trim(), index);
+  start(artist: string, album: string, index = 0, getAudios?: GetAudios, name?: string): DownloadJob {
+    const job = new DownloadJob(artist.trim(), album.trim(), index, name?.trim() || undefined);
     this.jobs.set(job.id, job);
     this.notify();
     void this.runJob(job, getAudios);

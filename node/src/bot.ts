@@ -465,6 +465,19 @@ export class Bot {
   }
 
   // ------------------------------------------------------------------- Artista ---
+  /** Artistas que da el bot al buscar `query` (solo la consulta inline: no envía nada al chat).
+   *  `index` es el que se pasa a albums/albumTracks… para elegirlo. */
+  async artists(query: string) {
+    const res = await this.t.inlineQuery(this.c.artistPrefix + query);
+    const num = (text: string | undefined, key: string) => {
+      const m = new RegExp(`${key}\\s*:\\s*(\\d+)`, "i").exec(text ?? "");
+      return m ? Number(m[1]) : null;
+    };
+    return res.results.map((r, index) => ({
+      index, nombre: r.title ?? "", albumes: num(r.description, "albums"), seguidores: num(r.description, "followers"),
+    }));
+  }
+
   /** Busca al artista y devuelve la ficha (o directamente la lista, si el bot la muestra).
    *  Si el bot tarda, espera; si no aparece la ficha, vuelve a buscar. */
   private async searchArtist(artist: string, index: number): Promise<Msg> {
@@ -673,10 +686,11 @@ export class Bot {
     return null;
   }
 
-  /** Canciones de un álbum concreto de un artista. */
-  async albumTracks(artist: string, album: string, index = 0) {
-    // index > 0: otro artista con el mismo nombre; la búsqueda directa no sabe distinguirlos
-    const direct = index ? null : await this.albumDirect(artist, album);
+  /** Canciones de un álbum concreto de un artista. `name`: el nombre que dio el bot para ese
+   *  artista (la web lo envía); con él la búsqueda directa vale aunque se eligiera otro resultado.
+   *  Sin él e index > 0 no se usa: el texto escrito no distingue a qué artista se refiere. */
+  async albumTracks(artist: string, album: string, index = 0, name?: string) {
+    const direct = name || !index ? await this.albumDirect(name || artist, album) : null;
     const albumMsg = direct && [...direct].reverse().find(hasTracks);
     if (albumMsg) return { artista: artist, album, ...parseAlbum(await this.allPages(albumMsg.message_id, "Leyendo las canciones")) };
     return this.withRetries(async () => {
@@ -711,8 +725,8 @@ export class Bot {
 
   // ------------------------------------------------------------ Para descargar ---
   /** Abre un álbum desde la lista del artista y devuelve el id de la ficha con 'GET ALL'. */
-  async albumCardId(artist: string, album: string, index = 0): Promise<[number | null, Record<string, unknown> | null]> {
-    const directCard = index ? null : await this.albumCardDirect(artist, album);
+  async albumCardId(artist: string, album: string, index = 0, name?: string): Promise<[number | null, Record<string, unknown> | null]> {
+    const directCard = name || !index ? await this.albumCardDirect(name || artist, album) : null;
     if (directCard !== null) return [directCard, null];
     try {
       return await this.withRetries(async () => {

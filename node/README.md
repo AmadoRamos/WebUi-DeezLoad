@@ -25,6 +25,11 @@ la misma carpeta de descargas, el mismo `ajustes.json` y `DISC_PAUSE` del `.env`
 No abras los dos servidores a la vez: hablarían con el bot al mismo tiempo (si el puerto 8000
 ya está en uso, el de Node avisa y no arranca). Ctrl+C lo cierra al instante.
 
+**Varios artistas con ese nombre:** si solo uno se llama exactamente como lo escribiste (sin
+distinguir mayúsculas ni tildes), se usa ese aunque no sea el primero del bot. Si no (por ejemplo
+«soda», o un nombre mal escrito), la web muestra los artistas que encontró el bot, con sus álbumes
+y seguidores, para que elijas. Es solo una consulta al bot: no envía nada al chat.
+
 ## Búsqueda directa de álbum
 
 Para abrir un álbum hacía falta buscar al artista, pulsar ALBUMS y recorrer todas las páginas de la
@@ -47,8 +52,9 @@ modo inline del bot (sin el prefijo `.art`), que además de canciones devuelve �
 - **Si no sirve** (el nombre del artista no coincide, hay dos álbumes iguales, el título viene
   recortado, el bot abre otra cosa…), se usa la lista de álbumes de siempre: funciona, pero tarda
   lo de antes.
-- Si eliges otro artista con el mismo nombre (`n` > 0 en la línea de comandos), se usa la lista:
-  la búsqueda directa no sabe distinguirlos.
+- En la línea de comandos, si eliges otro artista (`n` > 0) se usa la lista: el nombre escrito no
+  distingue a qué artista se refiere. En la web se usa el nombre que dio el bot, así que la búsqueda
+  directa vale también para el artista elegido.
 
 En `logs\bot.log` aparece como `busca directo «…» -> «… (Album)»`, o cuántas coincidencias hubo
 cuando se usó la lista.
@@ -113,7 +119,7 @@ Si el bot no reacciona ni insistiendo, el error sale en menos de un minuto (3 pu
 npm test
 ```
 
-176 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
+178 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
 nombres engañosos ("Quiero Más", "Back in Black"), discografía con BACK, espera tras GET ALL,
 traducción de mensajes de GramJS y las peticiones que se envían a Telegram.
 Fase 2: descargas en secuencia y hasta 5 a la vez (con cambio en caliente y orden por álbum),

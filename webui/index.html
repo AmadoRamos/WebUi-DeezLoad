@@ -52,6 +52,14 @@
   .artist { padding: 22px 32px 0; display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
   .artist h2 { margin: 0; font: 900 clamp(32px, 6vw, 72px)/.95 var(--display); letter-spacing: -.04em; white-space: pre-line; }
   .artist p { margin: 0; color: var(--dim); }
+  /* Elegir entre varios artistas */
+  .pick { list-style: none; margin: 20px 32px 0; padding: 0; display: grid; gap: 8px; max-width: 680px; }
+  .pick button { width: 100%; display: flex; justify-content: space-between; align-items: baseline; gap: 6px 16px; flex-wrap: wrap;
+                 padding: 14px 20px; border: 0; border-radius: 16px; background: var(--deep); cursor: pointer; text-align: left; }
+  .pick button:hover { background: var(--deeper); }
+  .pick b { font-size: 17px; }
+  .pick span { color: var(--dim); font-size: 13.5px; }
+  @media (max-width: 640px) { .pick { margin: 16px 16px 0; } }
   .loading, .error { padding: 24px 32px; color: var(--dim); display: flex; gap: 10px; align-items: center; margin: 0; }
   .error { color: var(--err); }
   .spin { width: 16px; height: 16px; border: 2px solid var(--deep); border-top-color: var(--sun);
@@ -429,10 +437,12 @@ async function jpost(url, body) {
 
 const API = {
   config: () => jget("/api/config"),
-  albums: (artist) => jget(`/api/albums?artist=${encodeURIComponent(artist)}&index=0`),
-  tracks: (artist, album) =>
-    jget(`/api/tracks?artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}&index=0`),
-  download: (artist, album) => jpost("/api/download", { artist, album, index: 0 }),
+  artists: (q) => jget(`/api/artistas?q=${encodeURIComponent(q)}`),
+  albums: (artist, index = 0) => jget(`/api/albums?artist=${encodeURIComponent(artist)}&index=${index}`),
+  // name: el nombre que dio el bot (búsqueda directa del álbum); artist + index eligen al artista en el bot
+  tracks: (artist, album, index = 0, name = "") =>
+    jget(`/api/tracks?artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}&index=${index}&name=${encodeURIComponent(name)}`),
+  download: (artist, album, index = 0, name = "") => jpost("/api/download", { artist, album, index, name }),
   jobs: () => jget("/api/jobs"),
   activity: () => jget("/api/actividad"),
   settings: () => jget("/api/ajustes"),
@@ -876,23 +886,50 @@ async function search(ev) {
   ev?.preventDefault();
   const artist = $("#artist").value.trim();
   if (!artist) { $("#artist").focus(); return; }
-  state.artist = artist;
+  state.artist = artist; state.index = 0;
   document.body.classList.add("searched");
   const album = $("#album").value.trim();
   if (album) return searchAlbum(artist, album);
   $("#go").disabled = true;
+  $("#results").innerHTML = `<div class="loading">${liveHTML({ head: `Buscando a «${artist}»`, step: "Pidiendo al bot los artistas con ese nombre…" })}</div>`;
+  try {
+    // Si un único artista se llama exactamente así, ese; si no, que elija el usuario.
+    let found = [];
+    try { found = await API.artists(artist); } catch (e) { /* sin la lista (p. ej. servidor de Python): el primero, como antes */ }
+    if (state.artist !== artist) return;
+    const same = found.filter((a) => plainName(a.nombre) === plainName(artist));
+    if (same.length === 1) return await loadArtist(same[0].index);
+    if (found.length > 1) return renderArtistChoice(artist, found);
+    await loadArtist(found[0]?.index ?? 0);
+  } finally { $("#go").disabled = false; }
+}
+const plainName = (s) => (s || "").normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().trim();
+
+// Varios artistas posibles: lista para elegir (con álbumes y seguidores, para distinguir a los homónimos).
+function renderArtistChoice(artist, found) {
+  const n = (v, one, many) => (v == null ? "" : `${v.toLocaleString("es")} ${v === 1 ? one : many}`);
+  $("#results").innerHTML = `<div class="artist"><h2>¿Cuál de estos?</h2><p>El bot encontró ${plural(found.length, "artista", "artistas")} para «${esc(artist)}».</p></div>
+    <ul class="pick">${found.map((a) => `<li><button type="button" data-i="${a.index}"><b>${esc(a.nombre)}</b>
+      <span>${[n(a.albumes, "álbum", "álbumes"), n(a.seguidores, "seguidor", "seguidores")].filter(Boolean).map(esc).join(" · ")}</span></button></li>`).join("")}</ul>`;
+  $$(".pick button", $("#results")).forEach((b) => (b.onclick = () => loadArtist(Number(b.dataset.i))));
+}
+
+async function loadArtist(index) {
+  const artist = state.artist;
+  state.index = index;
   $("#results").innerHTML = `<div class="loading" data-op="buscar" data-title="${escAttr(artist)}">${liveHTML({ head: `Buscando a «${artist}»`, step: "Conectando con el bot…" })}</div>`;
   refreshActivity();
   try {
-    renderAlbums(await API.albums(artist));
+    const data = await API.albums(artist, index);
+    if (state.artist === artist) renderAlbums(data);
   } catch (e) {
-    $("#results").innerHTML = `<p class="error">No se pudo buscar «${esc(artist)}»: ${esc(e.message)}</p>`;
-  } finally { $("#go").disabled = false; }
+    if (state.artist === artist) $("#results").innerHTML = `<p class="error">No se pudo buscar «${esc(artist)}»: ${esc(e.message)}</p>`;
+  }
 }
 
 // Artista + álbum: abre el álbum sin leer la lista de álbumes del artista (el bot lo busca directo).
 function searchAlbum(artist, album) {
-  state.artistName = artist; state.sections = {};
+  state.artistName = artist; state.sections = {}; state.index = 0;
   $("#results").innerHTML = `<div class="artist"><h2>${esc(artist)}</h2><p id="artistMeta"></p>
     <button type="button" class="disc-btn" id="allBtn">Ver todos sus álbumes</button></div>`;
   $("#allBtn").onclick = () => { $("#album").value = ""; search(); };
@@ -960,7 +997,7 @@ async function openAlbum(el, album = el.dataset.album) {
   refreshActivity();
   loadDetails(album).then(() => { if (state.album === album) refreshFacts(); });
   try {
-    const data = await API.tracks(state.artistName || state.artist, album);  // el nombre que da el bot, no el escrito
+    const data = await API.tracks(state.artist, album, state.index, state.artistName);
     if (state.album === album) renderTracks(album, data);
   } catch (e) {
     if (state.album === album) $("#sheetBody .loading").outerHTML = `<p class="note err">No se pudieron cargar las pistas: ${esc(e.message)}</p>`;
@@ -1010,7 +1047,7 @@ async function startDownload(album, btn) {
   const note = $("#dlNote");
   btn.disabled = true; btn.textContent = "Añadiendo…"; note.className = "note"; note.textContent = "";
   try {
-    await API.download(state.artistName || state.artist, album);
+    await API.download(state.artist, album, state.index, state.artistName);
     note.textContent = "Añadido a descargas. Sigue su avance en la bandeja de abajo.";
     setDock(true);
     refreshJobs();
@@ -1335,7 +1372,7 @@ $("#discForm").addEventListener("submit", async (e) => {
   const go = $("#discGo");
   go.disabled = true; go.textContent = "Iniciando…";
   try {
-    await API.startDiscography({ artist: state.artist, name: state.artistName, albums });
+    await API.startDiscography({ artist: state.artist, name: state.artistName, index: state.index, albums });
     $("#discDlg").close();
     setDock(true);
     refreshJobs();

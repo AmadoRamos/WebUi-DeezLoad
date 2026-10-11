@@ -16,7 +16,7 @@ import { DownloadJob, Downloader, MAX_PARALLEL, Mutex } from "./downloads.js";
 import * as songs from "./songs.js";
 import type { Transport } from "./types.js";
 
-export type BotApi = Pick<Bot, "albums" | "albumTracks" | "albumCardId" | "albumCardDirect" | "albumCardInList" | "backToList" | "collectGetAll">;
+export type BotApi = Pick<Bot, "artists" | "albums" | "albumTracks" | "albumCardId" | "albumCardDirect" | "albumCardInList" | "backToList" | "collectGetAll">;
 
 export interface AppOptions {
   transport: Transport;       // para bajar los archivos
@@ -128,10 +128,16 @@ export class App {
       const artist = qstr(q, "artist"), index = int(q.get("index"), "index", 0);
       return this.botCall("buscar", artist.trim(), () => bot.albums(artist, index));
     }
+    if (path === "/api/artistas") {   // solo la consulta inline: no espera turno con el bot
+      allow(method, "GET");
+      try { return await bot.artists(qstr(q, "q")); }
+      catch (e) { throw new HttpError(502, (e as Error)?.message || String(e)); }
+    }
     if (path === "/api/tracks") {
       allow(method, "GET");
       const artist = qstr(q, "artist"), album = qstr(q, "album"), index = int(q.get("index"), "index", 0);
-      return this.botCall("album", album.trim(), () => bot.albumTracks(artist, album, index));
+      const name = q.get("name")?.trim() || undefined;   // el nombre que dio el bot (búsqueda directa)
+      return this.botCall("album", album.trim(), () => bot.albumTracks(artist, album, index, name));
     }
     if (path === "/api/download") {
       allow(method, "POST");
@@ -141,7 +147,7 @@ export class App {
       for (const disc of this.discographies.values())
         if (disc.queuedKeys().has(key))
           throw new HttpError(409, `«${album.trim()}» ya está en la cola de la discografía de ${disc.name}.`);
-      return { job_id: dl.start(artist, album, index).id };
+      return { job_id: dl.start(artist, album, index, undefined, str(b, "name", "")).id };
     }
     if (path === "/api/existentes") {
       allow(method, "POST");

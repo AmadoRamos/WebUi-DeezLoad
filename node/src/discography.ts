@@ -77,7 +77,8 @@ export class Discography {
     const { bot } = this.ctx;
     // Primero la búsqueda directa (sin BACK ni páginas), con el nombre del artista que dio el bot.
     // Si no sirve, la lista de siempre (se abre solo cuando hace falta).
-    const direct = this.index ? null : await bot.albumCardDirect(this.name, job.album);
+    // (con index > 0 solo si el nombre vino del bot: el texto escrito no distingue al artista)
+    const direct = this.index && this.name === this.artist ? null : await bot.albumCardDirect(this.name, job.album);
     if (direct !== null) return bot.collectGetAll(direct);
     if (this.listId === null) {
       const listing = await bot.albums(this.artist, this.index) as { list_message_id?: number; error?: string };

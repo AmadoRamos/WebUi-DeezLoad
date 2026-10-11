@@ -40,3 +40,24 @@ it("abre el álbum del artista pedido sin pasar por la lista", async () => {
   await new Bot(fb, fast).albumCardId("Eddy Herrera", "exitos");   // escrito sin tilde
   assert.deepEqual(fb.sent, ["n2", "n2", "n2"]);
 });
+
+it("con el nombre que dio el bot, la búsqueda directa vale aunque se eligiera otro artista (index > 0)", async () => {
+  const fb = new InlineBot(["Otro"], "edit", ["⬅️", "➡️"]);
+  const [card] = await new Bot(fb, fast).albumCardId("eddy", "Éxitos", 1, "Eddy Herrera");
+  assert.ok(card);
+  assert.deepEqual(fb.sent, ["n2"]);
+  assert.equal(fb.pressed, 0);
+});
+
+it("artistas: nombre, álbumes y seguidores de cada resultado, con el índice para elegirlo", async () => {
+  class ArtistBot extends FakeBot {
+    override async inlineQuery(q?: string) {
+      assert.equal(q, ".art soda");
+      return { queryId: 1, results: [{ id: "n0", title: "Soda", description: "Albums: 159\nFollowers: 293" },
+                                     { id: "n1", title: "Soda Stereo", description: "Albums: 22\nFollowers: 1774511" }] };
+    }
+  }
+  const list = await new Bot(new ArtistBot([], "edit", ["⬅️", "➡️"]), fast).artists("soda");
+  assert.deepEqual(list, [{ index: 0, nombre: "Soda", albumes: 159, seguidores: 293 },
+                          { index: 1, nombre: "Soda Stereo", albumes: 22, seguidores: 1774511 }]);
+});
