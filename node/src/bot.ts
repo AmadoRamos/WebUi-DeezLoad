@@ -640,8 +640,45 @@ export class Bot {
     return [parsed, listId];
   }
 
+  // ------------------------------------------------------ Búsqueda directa del álbum ---
+  /** La búsqueda inline del bot («álbum artista», sin prefijo) devuelve, además de canciones,
+   *  álbumes: "Título (Album)" con el artista como descripción. Elegir uno abre su ficha al
+   *  momento, sin la ficha del artista ni las páginas de la lista (~20 s cada una).
+   *  Solo si hay UN resultado con el mismo título exacto y el mismo artista; si no, o si el bot
+   *  abre otra cosa, devuelve null y se usa la lista de siempre. */
+  private async albumDirect(artist: string, album: string): Promise<Snapshot[] | null> {
+    const query = `${album} ${artist}`;
+    try {
+      const res = await this.t.inlineQuery(query);
+      // Título exacto; si no hay, sin distinguir tildes (escrito a mano: «exitos» -> «Éxitos»).
+      // Los símbolos sí cuentan: «Imparable 🅴» no es «Imparable».
+      const albums = res.results.flatMap((r) => {
+        const m = /^(.*) \(Album\)$/.exec(r.title ?? "");
+        return m && plain(r.description ?? "") === plain(artist) ? [{ r, t: m[1].trim().toLowerCase() }] : [];
+      });
+      const noAccents = (s: string) => s.normalize("NFKD").replace(/\p{M}/gu, "");
+      const title = album.trim().toLowerCase();
+      let hits = albums.filter((a) => a.t === title).map((a) => a.r);
+      if (!hits.length) hits = albums.filter((a) => noAccents(a.t) === noAccents(title)).map((a) => a.r);
+      if (hits.length !== 1) { this.log(`busca directo «${query}»: ${hits.length} coincidencias, se usa la lista`); return null; }
+      this.log(`busca directo «${query}» -> «${hits[0].title}»`);
+      report(`Abriendo «${album}» directamente`);
+      const before = await this.t.lastId();
+      await this.t.sendInlineResult(res.queryId, hits[0].id);
+      const got = await this.awaitReply(before, null, "", (m) => screenOf(m) === "album", this.c.slowWait * 1000);
+      if (got?.ok && sameAlbum(got.msg, album)) return got.all.filter((m) => m.id > before).map(snapshot);
+    } catch (e) {
+      this.log(`busca directo «${query}» falló: ${(e as Error)?.message || e}`);
+    }
+    return null;
+  }
+
   /** Canciones de un álbum concreto de un artista. */
   async albumTracks(artist: string, album: string, index = 0) {
+    // index > 0: otro artista con el mismo nombre; la búsqueda directa no sabe distinguirlos
+    const direct = index ? null : await this.albumDirect(artist, album);
+    const albumMsg = direct && [...direct].reverse().find(hasTracks);
+    if (albumMsg) return { artista: artist, album, ...parseAlbum(await this.allPages(albumMsg.message_id, "Leyendo las canciones")) };
     return this.withRetries(async () => {
       const listing = await this.albumsOnce(artist, index);
       const [data] = await this.albumTracksFromList(listing.list_message_id, album);
@@ -675,6 +712,9 @@ export class Bot {
   // ------------------------------------------------------------ Para descargar ---
   /** Abre un álbum desde la lista del artista y devuelve el id de la ficha con 'GET ALL'. */
   async albumCardId(artist: string, album: string, index = 0): Promise<[number | null, Record<string, unknown> | null]> {
+    const direct = index ? null : await this.albumDirect(artist, album);
+    const directCard = direct && [...direct].reverse().find((m) => hasGetAll(m) && screenOf(m) === "album");
+    if (directCard) return [directCard.message_id, null];
     try {
       return await this.withRetries(async () => {
         const listing = await this.albumsOnce(artist, index);

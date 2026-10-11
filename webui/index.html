@@ -35,8 +35,8 @@
   .hero h1 { font: 800 clamp(34px, 6.4vw, 78px)/.98 var(--display); letter-spacing: -.035em; margin: 0 0 28px; }
   .searched .hero { padding: 14px 32px 8px; }
   .searched .hero h1 { display: none; }
-  .search { display: flex; gap: 10px; max-width: 680px; }
-  .search input { flex: 1; min-width: 0; padding: 16px 20px; border-radius: 999px; border: 2px solid transparent;
+  .search { display: flex; flex-wrap: wrap; gap: 10px; max-width: 820px; }
+  .search input { flex: 1 1 200px; min-width: 0; padding: 16px 20px; border-radius: 999px; border: 2px solid transparent;
                   background: var(--paper); color: var(--deeper); font-size: 17px; outline: none; }
   .search input::placeholder { color: #6a72a8; }
   .search input:focus { border-color: var(--sun); }
@@ -293,6 +293,7 @@
   <h1>¿Qué disco quieres tener hoy?</h1>
   <form class="search" id="searchForm" role="search">
     <input id="artist" type="search" placeholder="Escribe un artista, p. ej. Soda Stereo" autocomplete="off" aria-label="Artista" />
+    <input id="album" type="search" placeholder="Álbum (opcional, lo abre directo)" autocomplete="off" aria-label="Álbum (opcional)" />
     <button class="btn" id="go" type="submit">Buscar</button>
   </form>
   <div class="activity" id="activity" role="status" aria-live="polite"></div>
@@ -877,6 +878,8 @@ async function search(ev) {
   if (!artist) { $("#artist").focus(); return; }
   state.artist = artist;
   document.body.classList.add("searched");
+  const album = $("#album").value.trim();
+  if (album) return searchAlbum(artist, album);
   $("#go").disabled = true;
   $("#results").innerHTML = `<div class="loading" data-op="buscar" data-title="${escAttr(artist)}">${liveHTML({ head: `Buscando a «${artist}»`, step: "Conectando con el bot…" })}</div>`;
   refreshActivity();
@@ -885,6 +888,20 @@ async function search(ev) {
   } catch (e) {
     $("#results").innerHTML = `<p class="error">No se pudo buscar «${esc(artist)}»: ${esc(e.message)}</p>`;
   } finally { $("#go").disabled = false; }
+}
+
+// Artista + álbum: abre el álbum sin leer la lista de álbumes del artista (el bot lo busca directo).
+function searchAlbum(artist, album) {
+  state.artistName = artist; state.sections = {};
+  $("#results").innerHTML = `<div class="artist"><h2>${esc(artist)}</h2><p id="artistMeta"></p>
+    <button type="button" class="disc-btn" id="allBtn">Ver todos sus álbumes</button></div>`;
+  $("#allBtn").onclick = () => { $("#album").value = ""; search(); };
+  loadCovers(artist, null, [album]).then((info) => {
+    if (state.artist !== artist) return;  // llegó tarde: el usuario ya buscó otra cosa
+    applyAlbumMeta(info);
+    if (state.album === album) { refreshFacts(); loadDetails(album).then(refreshFacts); applyCovers($("#sheet")); }
+  });
+  openAlbum($("#album"), album);
 }
 
 function renderAlbums(data) {
@@ -932,11 +949,10 @@ function closeSheet() {
   state.lastFocus?.focus();
 }
 
-async function openAlbum(el) {
-  const album = el.dataset.album;
+async function openAlbum(el, album = el.dataset.album) {
   state.album = album; state.lastFocus = el;
   $$(".disc[aria-current]").forEach((d) => d.removeAttribute("aria-current"));
-  el.setAttribute("aria-current", "true");
+  if (el.classList.contains("disc")) el.setAttribute("aria-current", "true");
   state.trackData = null;
   $("#sheetBody").innerHTML = `${artHTML(album, "grande")}<h2 id="sheetTitle">${esc(album)}</h2>
     <p class="meta">${sheetMeta(album)}</p><dl class="facts" id="facts">${factsHTML(album, null)}</dl><div class="loading" data-op="album" data-title="${escAttr(album)}">${liveHTML({ head: "Cargando pistas", step: "Conectando con el bot…" })}</div>`;

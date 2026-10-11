@@ -25,6 +25,31 @@ la misma carpeta de descargas, el mismo `ajustes.json` y `DISC_PAUSE` del `.env`
 No abras los dos servidores a la vez: hablarían con el bot al mismo tiempo (si el puerto 8000
 ya está en uso, el de Node avisa y no arranca). Ctrl+C lo cierra al instante.
 
+## Búsqueda directa de álbum
+
+Para abrir un álbum hacía falta buscar al artista, pulsar ALBUMS y recorrer todas las páginas de la
+lista (unos 20 s por página: con 70 álbumes, casi 2 minutos). Ahora se busca «álbum artista» en el
+modo inline del bot (sin el prefijo `.art`), que además de canciones devuelve álbumes
+(«Éxitos (Album)», con el artista debajo). Al elegirlo, el bot abre la ficha del álbum al momento
+(unos 12 s).
+
+- **En la web**: escribe el artista y, en el segundo campo, el álbum. Se abre su ficha con las
+  canciones y «Descargar álbum». «Ver todos sus álbumes» carga la lista completa como antes.
+  Si dejas el álbum vacío, todo funciona como siempre.
+- **Sin cambiar nada**: abrir un álbum desde la lista o descargarlo también usa la búsqueda
+  directa (`/api/tracks`, `/api/download`, `npm run cli -- tracks` y `download`).
+- **Cuándo se usa**: solo si hay un único álbum con ese título y ese artista. Primero busca el
+  título exacto; si no lo hay, sin distinguir tildes («exitos» → «Éxitos»). Los símbolos sí
+  cuentan («Imparable 🅴» no es «Imparable»).
+- **Si no sirve** (el nombre del artista no coincide, hay dos álbumes iguales, el título viene
+  recortado, el bot abre otra cosa…), se usa la lista de álbumes de siempre: funciona, pero tarda
+  lo de antes. Las discografías siempre usan la lista.
+- Si eliges otro artista con el mismo nombre (`n` > 0 en la línea de comandos), se usa la lista:
+  la búsqueda directa no sabe distinguirlos.
+
+En `logs\bot.log` aparece como `busca directo «…» -> «… (Album)»`, o cuántas coincidencias hubo
+cuando se usó la lista.
+
 ## Instalar
 
 1. Node.js 20 o superior (https://nodejs.org, versión LTS).
@@ -85,7 +110,7 @@ Si el bot no reacciona ni insistiendo, el error sale en menos de un minuto (3 pu
 npm test
 ```
 
-171 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
+174 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
 nombres engañosos ("Quiero Más", "Back in Black"), discografía con BACK, espera tras GET ALL,
 traducción de mensajes de GramJS y las peticiones que se envían a Telegram.
 Fase 2: descargas en secuencia y hasta 5 a la vez (con cambio en caliente y orden por álbum),
@@ -98,6 +123,8 @@ responden, la ficha del artista en lugar de la lista, otro álbum, páginas salt
 sin respuesta o con archivos repetidos, cortes de red y FLOOD_WAIT.
 Descargas con el permiso del archivo caducado (FILE_REFERENCE_EXPIRED): se vuelve a pedir el
 mensaje al chat y se repite la descarga una vez.
+Búsqueda directa de álbum: elige el del artista pedido (no otro con el mismo título), no toca la
+lista y acepta el título sin tildes.
 
 `npx tsx test/support/serve-stub.ts 8772 <carpeta> <ajustes.json> ../webui` arranca el servidor
 con un bot de mentira (sin Telegram), útil para probar la interfaz.

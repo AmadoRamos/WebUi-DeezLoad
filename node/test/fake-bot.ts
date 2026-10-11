@@ -13,7 +13,7 @@ export class FakeBot implements Transport {
     this.listId = this.newMsg().id;
     this.showPage(this.listId, 0);
   }
-  private newMsg(): Msg {
+  newMsg(): Msg {
     const m: Msg = { id: this.nextId++, text: "", buttons: [], out: false, viaBot: false, editDate: 0, hasDocument: false };
     this.msgs.set(m.id, m);
     return m;
@@ -59,8 +59,8 @@ export class FakeBot implements Transport {
       this.showPage(a[1], a[2]);
     }
   }
-  async inlineQuery() { return { queryId: 1, results: [] }; }
-  async sendInlineResult() {}
+  async inlineQuery(_q?: string, _o?: string): ReturnType<Transport["inlineQuery"]> { return { queryId: 1, results: [] }; }
+  async sendInlineResult(_q?: unknown, _id?: string) {}
   async sendMessage(): Promise<Msg> { return this.newMsg(); }
   async download(): Promise<void> { throw new Error("sin archivos"); }
 }
