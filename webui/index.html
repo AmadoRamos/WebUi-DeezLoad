@@ -960,7 +960,7 @@ async function openAlbum(el, album = el.dataset.album) {
   refreshActivity();
   loadDetails(album).then(() => { if (state.album === album) refreshFacts(); });
   try {
-    const data = await API.tracks(state.artist, album);
+    const data = await API.tracks(state.artistName || state.artist, album);  // el nombre que da el bot, no el escrito
     if (state.album === album) renderTracks(album, data);
   } catch (e) {
     if (state.album === album) $("#sheetBody .loading").outerHTML = `<p class="note err">No se pudieron cargar las pistas: ${esc(e.message)}</p>`;
@@ -1007,7 +1007,7 @@ async function startDownload(album, btn) {
   const note = $("#dlNote");
   btn.disabled = true; btn.textContent = "Añadiendo…"; note.className = "note"; note.textContent = "";
   try {
-    await API.download(state.artist, album);
+    await API.download(state.artistName || state.artist, album);
     note.textContent = "Añadido a descargas. Sigue su avance en la bandeja de abajo.";
     setDock(true);
     refreshJobs();
