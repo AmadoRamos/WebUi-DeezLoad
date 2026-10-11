@@ -100,3 +100,22 @@ it("álbumes por título: los de cualquier artista, sin «(Album)» y aunque ven
     { album: "Recordar Es Vivir, Vol. 6. Música de Guatemala para…", artista: "FM de Zacapa" },
   ]);
 });
+
+it("canción de un álbum: elige la versión de ese álbum entre varias con el mismo título", async () => {
+  class VersionsBot extends SongBot {
+    override async inlineQuery(): ReturnType<FakeBot["inlineQuery"]> {
+      return { queryId: 1, results: [
+        { id: "1", title: "Tu Eres Ajena", description: "Artist: Eddy Herrera\nAlbum: Exitos De" },
+        { id: "2", title: "Tu Eres Ajena", description: "Artist: Eddy Herrera\nAlbum: Mega MixHits" },
+        { id: "3", title: "Tu Eres Ajena", description: "Artist: Frank Reyes\nAlbum: Mega MixHits" },
+        { id: "4", title: "TU ERES AJENA (En Vivo)", description: "Artist: Eddy Herrera\nAlbum: Agradecido (Live)" },
+      ] };
+    }
+  }
+  const fb = new VersionsBot([], "edit", ["⬅️", "➡️"]);
+  const bot = new Bot(fb, fast);
+  await bot.albumTrackFile(["", "Eddy Herrera"], "Mega MixHits", "Tu Eres Ajena");
+  await bot.albumTrackFile(["Eddy Herrera"], "Agradecido (Live)", "TU ERES AJENA (En Vivo)");
+  assert.deepEqual(fb.sent, ["2", "4"]);
+  await assert.rejects(bot.albumTrackFile(["Eddy Herrera"], "Otro Disco", "Tu Eres Ajena"), /varias versiones/);
+});

@@ -484,6 +484,19 @@ export class Bot {
       : [{ album: r.title.replace(/\s*\(Album\)$/, ""), artista: (r.description ?? "").trim() }]));
   }
 
+  /** Una canción de un álbum: busca «título artista» y elige la de ese título, artista y álbum
+   *  (otra versión del mismo título suele estar en otro álbum). Si ninguna dice ese álbum, la
+   *  única con ese título y artista. `artists`: el de la canción y el del álbum (vale cualquiera). */
+  async albumTrackFile(artists: string[], album: string, title: string): Promise<Msg[]> {
+    const names = artists.filter(Boolean);
+    const query = `${title} ${names[0] ?? ""}`.trim();
+    const found = (await this.songs(query)).filter((s) => plain(s.titulo) === plain(title) && names.some((a) => plain(a) === plain(s.artista)));
+    const sameAlbum = found.filter((s) => plain(s.album) === plain(album));
+    const pick = sameAlbum[0] ?? (found.length === 1 ? found[0] : undefined);
+    if (!pick) throw new Error(found.length ? "El bot tiene varias versiones de esa canción y ninguna de este álbum." : "El bot no encontró esa canción.");
+    return this.songFile(query, pick.id);
+  }
+
   /** Elige la canción `id` de la búsqueda `query`: el bot envía directamente su archivo. */
   async songFile(query: string, id: string): Promise<Msg[]> {
     const res = await this.t.inlineQuery(query);

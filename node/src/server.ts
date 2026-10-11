@@ -16,7 +16,7 @@ import { DownloadJob, Downloader, MAX_PARALLEL, Mutex } from "./downloads.js";
 import * as songs from "./songs.js";
 import type { Transport } from "./types.js";
 
-export type BotApi = Pick<Bot, "albumSearch" | "songs" | "songFile" | "artists" | "albums" | "albumTracks" | "albumCardId" | "albumCardDirect" | "albumCardInList" | "backToList" | "collectGetAll">;
+export type BotApi = Pick<Bot, "albumTrackFile" | "albumSearch" | "songs" | "songFile" | "artists" | "albums" | "albumTracks" | "albumCardId" | "albumCardDirect" | "albumCardInList" | "backToList" | "collectGetAll">;
 
 export interface AppOptions {
   transport: Transport;       // para bajar los archivos
@@ -148,6 +148,13 @@ export class App {
       const b = await body();
       const query = str(b, "q"), id = str(b, "id"), title = str(b, "titulo"), artist = str(b, "artista", "");
       return { job_id: dl.start(artist, title, 0, () => bot.songFile(query, id)).id };
+    }
+    if (path === "/api/pista") {       // una canción de la ficha de un álbum
+      allow(method, "POST");
+      const b = await body();
+      const album = str(b, "album"), title = str(b, "titulo");
+      const albumArtist = (str(b, "name", "") || str(b, "artist")).trim(), trackArtist = str(b, "artista", "").trim();
+      return { job_id: dl.start(trackArtist || albumArtist, title, 0, () => bot.albumTrackFile([trackArtist, albumArtist], album, title)).id };
     }
     if (path === "/api/tracks") {
       allow(method, "GET");

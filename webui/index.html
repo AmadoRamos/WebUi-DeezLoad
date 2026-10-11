@@ -153,6 +153,11 @@
   .tracks .n { width: 22px; text-align: right; color: #8a8fb8; flex: none; }
   .tracks .t { flex: 1; min-width: 0; font-weight: 500; }
   .tracks .d { color: #8a8fb8; flex: none; }
+  .tracks .tdl { flex: none; width: 30px; height: 30px; margin: -4px 0; border-radius: 50%; border: 1.5px solid #c9cbe6;
+                 background: transparent; color: var(--deep); font-weight: 700; cursor: pointer; }
+  .tracks .tdl:hover:not(:disabled) { background: var(--deep); border-color: var(--deep); color: var(--paper); }
+  .tracks .tdl:disabled { cursor: default; opacity: .7; }
+  .tracks li.have .tdl { visibility: hidden; }  /* ya está en la carpeta */
 
   /* Bandeja de descargas */
   .dock { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 15;
@@ -460,6 +465,7 @@ const API = {
   albumSearch: (q) => jget(`/api/albumes?q=${encodeURIComponent(q)}`),
   songs: (q) => jget(`/api/canciones?q=${encodeURIComponent(q)}`),
   downloadSong: (body) => jpost("/api/cancion", body),
+  downloadTrack: (body) => jpost("/api/pista", body),
   albums: (artist, index = 0) => jget(`/api/albums?artist=${encodeURIComponent(artist)}&index=${index}`),
   // name: el nombre que dio el bot (búsqueda directa del álbum); artist + index eligen al artista en el bot
   tracks: (artist, album, index = 0, name = "") =>
@@ -1112,15 +1118,30 @@ function renderTracks(album, data) {
     <dl class="facts" id="facts">${factsHTML(album, data)}</dl>`;
   if (data.aviso) html += `<p class="aviso">${esc(data.aviso)}</p>`;
   if (tracks.length) {
-    html += `<ol class="tracks">${tracks.map((t) => `<li><span class="n">${t.n}</span><span class="t"><span class="ttl">${esc(t.titulo)}</span>${guestHTML(t)}</span>
-      <span class="d">${esc(fmtDur(t.duracion))}</span></li>`).join("")}</ol>`;
+    html += `<ol class="tracks">${tracks.map((t, i) => `<li><span class="n">${t.n}</span><span class="t"><span class="ttl">${esc(t.titulo)}</span>${guestHTML(t)}</span>
+      <span class="d">${esc(fmtDur(t.duracion))}</span>
+      <button type="button" class="tdl" data-i="${i}" title="Descargar solo esta canción" aria-label="Descargar «${escAttr(t.titulo)}»">↓</button></li>`).join("")}</ol>`;
   } else if (!data.aviso) {
     html += `<p class="aviso">Este lanzamiento no tiene pistas para listar. Suele pasar con singles que el bot no puede bajar como álbum completo.</p>`;
   }
   $("#sheetBody").innerHTML = html;
   const b = $("#dlBtn");
   if (b) b.onclick = () => startDownload(album, b);
+  $$("#sheetBody .tdl").forEach((tb) => (tb.onclick = () => downloadTrack(album, tracks[tb.dataset.i], tb)));
   if (tracks.length) markExisting(album, tracks);
+}
+
+// Una sola canción del álbum: el bot la busca por título y artista y envía su archivo.
+async function downloadTrack(album, t, b) {
+  b.disabled = true; b.textContent = "…"; b.title = "Añadiendo…";
+  try {
+    await API.downloadTrack({ artist: state.artist, name: state.artistName, album, titulo: t.titulo, artista: t.artista });
+    b.textContent = "✓"; b.title = "Añadida a descargas";
+    setDock(true);
+    refreshJobs();
+  } catch (e) {
+    b.disabled = false; b.textContent = "↓"; b.title = `No se pudo descargar: ${e.message}`;
+  }
 }
 
 // Canciones que ya están en la carpeta de descargas (por artista y título).

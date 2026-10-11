@@ -28,6 +28,12 @@ export class StubBot {
     return [{ id: "11", titulo: "En la Ciudad de la Furia", artista: "Soda Stereo", album: "Doble Vida" },
             { id: "12", titulo: "En la Ciudad de la Furia", artista: "Tributo Rock", album: "Homenaje" }];
   }
+  async albumTrackFile(artists: string[], album: string, title: string): Promise<Msg[]> {
+    report("Pidiendo la canción al bot"); await this.wait(0.5);
+    const artist = artists.find(Boolean) ?? "Soda Stereo";
+    return [{ id: 3000 + this.cards.size, text: "", buttons: [], out: false, viaBot: true, editDate: 0, hasDocument: true, raw: { album: `pista ${album}`, i: 0 },
+              media: { kind: "document", size: 3_000_000, file_name: `${artist} - ${title}.flac`, title } }];
+  }
   async songFile(_q: string, id: string): Promise<Msg[]> {
     report("Pidiendo la canción al bot"); await this.wait(0.5);
     const artist = id === "11" ? "Soda Stereo" : "Tributo Rock";

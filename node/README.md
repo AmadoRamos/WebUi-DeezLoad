@@ -41,6 +41,10 @@ al bot: no envía nada al chat.
 como cualquier descarga: avance en la bandeja, «ya estaba» si la tienes y reintento si falla.
 Solo se muestran las canciones de la primera página de resultados del bot (unas 25).
 
+**Una canción de un álbum:** en la ficha del álbum, cada canción tiene un botón ↓ para bajar solo
+esa (las que ya tienes no lo muestran). Se busca igual, por título y artista, y se elige la versión
+de ese álbum; si el bot no la tiene en ese álbum y hay varias versiones, avisa en lugar de bajar otra.
+
 ## Búsqueda directa de álbum
 
 Para abrir un álbum hacía falta buscar al artista, pulsar ALBUMS y recorrer todas las páginas de la
@@ -133,7 +137,7 @@ Si el bot no reacciona ni insistiendo, el error sale en menos de un minuto (3 pu
 npm test
 ```
 
-181 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
+182 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
 nombres engañosos ("Quiero Más", "Back in Black"), discografía con BACK, espera tras GET ALL,
 traducción de mensajes de GramJS y las peticiones que se envían a Telegram.
 Fase 2: descargas en secuencia y hasta 5 a la vez (con cambio en caliente y orden por álbum),
