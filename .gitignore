@@ -21,6 +21,7 @@ python/salida.txt
 node/albums_node.json
 node/albums_python.json
 albums_*.json
+node/probar_alb.bat
 
 # Sistema
 Thumbs.db
