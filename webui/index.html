@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>deezload</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..700&family=Unbounded:wght@500..900&display=swap" rel="stylesheet" />
+<style>
+  /* Propuesta 3: Estantes — filas de discos, ficha lateral y bandeja de descargas */
+  :root {
+    --cobalt: #2234c2; --deep: #18248c; --deeper: #111a66; --paper: #fff5ee;
+    --dim: #b9c1f5; --sun: #ffd23f; --sun-ink: #2a2200; --pink: #ff9ec0; --mint: #7cf0c0; --err: #ffb0a6;
+    --display: "Unbounded", "Segoe UI", system-ui, sans-serif;
+    --body: "DM Sans", system-ui, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body { margin: 0; background: var(--cobalt); color: var(--paper); font: 15px/1.5 var(--body);
+         font-variant-numeric: tabular-nums; padding-bottom: 96px; }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; }
+
+  .bar-top { display: flex; align-items: center; gap: 16px; padding: 18px 32px; flex-wrap: wrap; }
+  .mark { font: 800 20px/1 var(--display); color: var(--paper); text-decoration: none; letter-spacing: -.02em; }
+  .mark i { font-style: normal; color: var(--sun); }
+  .status { margin-left: auto; font-size: 13px; color: var(--dim); display: flex; gap: 8px; align-items: center; }
+  .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--mint); }
+  .status.off::before { background: var(--err); }
+  .demo { margin: 0 32px; padding: 8px 14px; border-radius: 10px; background: var(--deep); color: var(--sun); font-size: 13.5px; }
+
+  /* Búsqueda: protagonista al inicio, compacta después */
+  .hero { padding: 9vh 32px 40px; max-width: 980px; transition: padding .3s ease; }
+  .hero h1 { font: 800 clamp(34px, 6.4vw, 78px)/.98 var(--display); letter-spacing: -.035em; margin: 0 0 28px; }
+  .searched .hero { padding: 14px 32px 8px; }
+  .searched .hero h1 { display: none; }
+  .search { display: flex; gap: 10px; max-width: 680px; }
+  .search input { flex: 1; min-width: 0; padding: 16px 20px; border-radius: 999px; border: 2px solid transparent;
+                  background: var(--paper); color: var(--deeper); font-size: 17px; outline: none; }
+  .search input::placeholder { color: #6a72a8; }
+  .search input:focus { border-color: var(--sun); }
+  .btn { border: 0; border-radius: 999px; padding: 14px 24px; cursor: pointer; font-weight: 700;
+         background: var(--sun); color: var(--sun-ink); white-space: nowrap; }
+  .btn:hover { filter: brightness(1.06); }
+  .btn:disabled { opacity: .6; cursor: default; filter: none; }
+  @media (max-width: 640px) { .bar-top, .hero, .searched .hero { padding-left: 16px; padding-right: 16px; }
+                              .demo { margin: 0 16px; } .search input { padding: 13px 16px; font-size: 16px; }
+                              .btn { padding: 12px 18px; } }
+
+  #results { padding: 0 0 20px; }
+  .artist { padding: 22px 32px 0; display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
+  .artist h2 { margin: 0; font: 900 clamp(32px, 6vw, 72px)/.95 var(--display); letter-spacing: -.04em; white-space: pre-line; }
+  .artist p { margin: 0; color: var(--dim); }
+  .loading, .error { padding: 24px 32px; color: var(--dim); display: flex; gap: 10px; align-items: center; margin: 0; }
+  .error { color: var(--err); }
+  .spin { width: 16px; height: 16px; border: 2px solid var(--deep); border-top-color: var(--sun);
+          border-radius: 50%; animation: spin .8s linear infinite; flex: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (max-width: 640px) { .artist, .loading, .error { padding-left: 16px; padding-right: 16px; } }
+
+  /* Estantes con desplazamiento horizontal */
+  .shelf { margin-top: 34px; }
+  .shelf-h { display: flex; align-items: center; gap: 12px; padding: 0 32px 12px; }
+  .shelf-h h3 { margin: 0; font: 700 18px/1.2 var(--display); letter-spacing: -.01em; }
+  .shelf-h span { color: var(--dim); font-size: 14px; }
+  .shelf-h .nav { margin-left: auto; display: flex; gap: 6px; }
+  .nav button { all: unset; cursor: pointer; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+                background: var(--deep); font-size: 18px; }
+  .nav button:hover { background: var(--deeper); }
+  .nav button:focus-visible { outline: 3px solid var(--sun); }
+  .row { display: flex; gap: 18px; overflow-x: auto; scroll-snap-type: x proximity; padding: 4px 32px 14px;
+         scroll-padding: 0 32px; scrollbar-width: thin; scrollbar-color: var(--deep) transparent; }
+  .disc { all: unset; cursor: pointer; flex: 0 0 168px; scroll-snap-align: start; display: flex; flex-direction: column; gap: 10px; }
+  .disc .art { aspect-ratio: 1; border-radius: 10px; position: relative; box-shadow: 0 10px 24px rgba(10,16,70,.4); }
+  .art { position: relative; overflow: hidden; }
+  .art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  .art::after { content: ""; position: absolute; inset: 0; border-radius: inherit;
+                background: linear-gradient(140deg, rgba(255,255,255,.18), transparent 45%); }
+  .disc .name { font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical; overflow: hidden; }
+  .disc:hover .name { color: var(--sun); }
+  .disc:focus-visible .art { outline: 3px solid var(--sun); outline-offset: 3px; }
+  .disc[aria-current="true"] .art { outline: 3px solid var(--sun); outline-offset: 3px; }
+  @media (max-width: 640px) { .row { padding: 4px 16px 14px; scroll-padding: 0 16px; } .shelf-h { padding: 0 16px 10px; }
+                              .shelf-h .nav { display: none; } .disc { flex-basis: 136px; } }
+
+  /* Ficha lateral del álbum */
+  .scrim { position: fixed; inset: 0; background: rgba(8,12,50,.45); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 20; }
+  .sheet { position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 100vw); z-index: 21; background: var(--paper);
+           color: var(--deeper); transform: translateX(100%); transition: transform .3s cubic-bezier(.2,.8,.2,1);
+           overflow: auto; padding: 24px 28px 120px; box-shadow: -20px 0 50px rgba(8,12,50,.35); }
+  .open .scrim { opacity: 1; pointer-events: auto; }
+  .open .sheet { transform: none; }
+  .sheet .x { all: unset; cursor: pointer; position: absolute; top: 16px; right: 16px; width: 38px; height: 38px;
+              border-radius: 50%; display: grid; place-items: center; font-size: 24px; background: #f1e4da; }
+  .sheet .x:hover { background: #ead6c8; }
+  .sheet .x:focus-visible { outline: 3px solid var(--cobalt); }
+  .sheet .art { display: block; width: 210px; aspect-ratio: 1; border-radius: 12px; position: relative; margin: 18px 0 22px;
+                box-shadow: 0 16px 34px rgba(17,26,102,.25); }
+  .disc .sub { display: flex; gap: 8px; align-items: center; color: var(--dim); font-size: 13px; min-height: 1.4em; margin-top: -6px; }
+  .tag-e { font-size: 10.5px; font-weight: 700; line-height: 1; padding: 2px 4px; border-radius: 3px; border: 1px solid currentColor; }
+  .artist .avatar { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; align-self: center;
+                    box-shadow: 0 10px 24px rgba(10,16,70,.4); }
+  .artist .dz { color: var(--sun); text-decoration: none; font-weight: 600; }
+  .artist .dz:hover { text-decoration: underline; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 14px 18px; margin: 14px 0 6px;
+           padding: 14px 0; border-top: 1px solid #efdfd3; border-bottom: 1px solid #efdfd3; }
+  .facts:empty { display: none; }
+  .facts dt { font-size: 12.5px; color: #8a8fb8; }
+  .facts dd { margin: 2px 0 0; font-weight: 600; }
+  .facts .dzl { grid-column: 1 / -1; }
+  .facts a { color: var(--cobalt); font-weight: 600; text-decoration: none; }
+  .facts a:hover { text-decoration: underline; }
+  .tracks .feat { display: block; font-size: 13px; color: #8a8fb8; font-weight: 400; }
+  .tracks li.have .ttl::after { content: "ya descargada"; margin-left: 8px; font-size: 11.5px; font-weight: 700;
+                              color: #0b7a52; background: #d9f7ea; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+  .have-note { margin: 10px 0 0; font-size: 14px; color: #0b7a52; }
+  .sheet h2 { margin: 0; font: 800 26px/1.08 var(--display); letter-spacing: -.025em; }
+  .sheet .meta { color: #5a6091; margin: 8px 0 18px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .sheet .btn { background: var(--cobalt); color: #fff; }
+  .sheet .btn:focus-visible { outline-color: var(--cobalt); }
+  .note { display: block; margin-top: 8px; font-size: 14px; color: #0b7a52; min-height: 1.4em; }
+  .note.err { color: #b3261e; }
+  .aviso { background: #f6e7dc; border-radius: 10px; padding: 10px 14px; color: #5a6091; }
+  .sheet .loading { padding: 0; color: #5a6091; }
+  .sheet .loading .spin { border-color: #ead6c8; border-top-color: var(--cobalt); }
+  .tracks { list-style: none; margin: 18px 0 0; padding: 0; }
+  .tracks li { display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid #efdfd3; }
+  .tracks .n { width: 22px; text-align: right; color: #8a8fb8; flex: none; }
+  .tracks .t { flex: 1; min-width: 0; font-weight: 500; }
+  .tracks .d { color: #8a8fb8; flex: none; }
+
+  /* Bandeja de descargas */
+  .dock { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 15;
+          width: min(720px, calc(100vw - 24px)); background: var(--deeper); border-radius: 20px;
+          box-shadow: 0 18px 50px rgba(5,8,40,.5); overflow: hidden; }
+  .dock-bar { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: grid;
+              grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 14px 20px; }
+  .dock-bar:focus-visible { outline: 3px solid var(--sun); outline-offset: -3px; border-radius: 20px; }
+  .dock-bar b { font: 700 15px/1.2 var(--display); }
+  .dock-bar .sum { color: var(--dim); font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dock-bar .chev { transition: transform .2s; font-size: 18px; }
+  .dock.expanded .chev { transform: rotate(180deg); }
+  .tray { max-height: 0; overflow: auto; transition: max-height .3s ease; }
+  .dock.expanded .tray { max-height: min(60vh, 520px); }
+  .tray-in { padding: 0 20px 16px; }
+  /* Selector de descargas simultáneas */
+  .par { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 2px 20px 14px; }
+  .par-lbl { font-weight: 700; font-size: 14px; }
+  .seg { display: inline-flex; background: var(--deep); border-radius: 999px; padding: 3px; }
+  .seg button { all: unset; cursor: pointer; padding: 6px 12px; border-radius: 999px; font-size: 13.5px; font-weight: 600;
+                color: var(--dim); min-width: 14px; text-align: center; }
+  .seg button:hover { color: var(--paper); }
+  .seg button[aria-pressed="true"] { background: var(--sun); color: var(--sun-ink); }
+  .seg button:focus-visible { outline: 3px solid var(--sun); outline-offset: 1px; }
+  .par-hint { color: var(--dim); font-size: 13px; flex-basis: 100%; }
+  .par-hint.ok { color: var(--mint); }
+  .par-hint.err { color: var(--err); }
+  .files .now { color: var(--sun); }
+  .files .bad { color: var(--err); }
+  .empty { color: var(--dim); margin: 0; padding: 4px 0 8px; }
+  .job { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 14px; padding: 14px 0; border-top: 1px solid rgba(255,255,255,.08); }
+  .job .art { width: 52px; height: 52px; border-radius: 8px; position: relative; }
+  .j-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+  .j-top b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .pill { font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: var(--deep); color: var(--dim); flex: none; }
+  .st-running .pill { background: var(--sun); color: var(--sun-ink); }
+  .st-completed .pill { background: var(--mint); color: #053524; }
+  .st-error .pill { background: var(--err); color: #4a0d06; }
+  .j-sub { color: var(--dim); font-size: 13px; }
+  .prog { height: 6px; border-radius: 6px; background: var(--deep); margin: 10px 0 6px; overflow: hidden; }
+  .prog i { display: block; height: 100%; width: 0; border-radius: 6px; background: var(--sun); transition: width .4s; }
+  .st-completed .prog i { background: var(--mint); } .st-error .prog i { background: var(--err); }
+  /* Barra por canciones: un tramo por pista, cada uno con su propio avance */
+  .tracks-bar { display: flex; gap: 3px; height: 8px; margin: 10px 0 6px; }
+  .tb { flex: 1 1 0; min-width: 2px; border-radius: 3px; background: var(--deep); overflow: hidden; }
+  .tb i { display: block; height: 100%; width: 0; background: var(--sun); }
+  .tb.s-done i { background: var(--mint); }
+  .tb.s-error i { background: var(--err); }
+  /* ya estaba en la carpeta: verde rayado, para distinguirla de lo recién descargado */
+  .tb.s-exists i { background: repeating-linear-gradient(135deg, var(--mint) 0 4px, rgba(124, 240, 192, .45) 4px 8px); }
+  .files .had { color: var(--mint); }
+  /* Discografía: botón, diálogo y tarjeta */
+  .disc-btn { align-self: center; border: 2px solid var(--sun); background: transparent; color: var(--sun); border-radius: 999px;
+              padding: 10px 18px; font-weight: 700; cursor: pointer; }
+  .disc-btn:hover { background: var(--sun); color: var(--sun-ink); }
+  .disc-btn:focus-visible { outline: 3px solid var(--paper); outline-offset: 2px; }
+  .disc-dlg { border: 0; border-radius: 18px; padding: 0; width: min(520px, calc(100vw - 32px)); background: var(--paper); color: var(--deeper);
+              box-shadow: 0 30px 80px rgba(8,12,50,.5); }
+  .disc-dlg::backdrop { background: rgba(8,12,50,.55); }
+  .disc-dlg form { padding: 24px 26px 22px; }
+  .disc-dlg h2 { margin: 0 0 6px; font: 800 22px/1.15 var(--display); letter-spacing: -.02em; }
+  .dd-lead { margin: 0 0 16px; color: #5a6091; }
+  .disc-dlg fieldset { border: 0; padding: 0; margin: 0 0 14px; display: grid; gap: 8px; }
+  .disc-dlg legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
+  .dd-sec { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: #f6e7dc; cursor: pointer; }
+  .dd-sec input { width: 18px; height: 18px; accent-color: var(--cobalt); }
+  .dd-sec span { flex: 1; font-weight: 600; }
+  .dd-sec small { color: #5a6091; font-size: 13px; }
+  .dd-est { min-height: 3em; color: #5a6091; font-size: 14px; }
+  .dd-est b { color: var(--deeper); }
+  .dd-est .warn { color: #b3261e; font-weight: 600; }
+  .dd-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+  .dd-cancel { border: 0; background: transparent; color: var(--cobalt); font-weight: 700; padding: 10px 14px; cursor: pointer; border-radius: 999px; }
+  .disc-dlg .btn { background: var(--cobalt); color: #fff; }
+  .disc-dlg .btn:disabled { opacity: .5; }
+  .dcard { padding: 14px 0; border-top: 1px solid rgba(255,255,255,.08); }
+  .dcard:first-child { border-top: 0; }
+  .dcard .j-top b { font: 700 15px/1.3 var(--display); }
+  .dcard .now-line { color: var(--paper); font-size: 13.5px; margin-top: 2px; }
+  .dcard .ctl { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+  .dcard .ctl button { border: 0; border-radius: 999px; padding: 7px 14px; cursor: pointer; font-weight: 700; font-size: 13.5px; }
+  .dcard .ctl .main { background: var(--sun); color: var(--sun-ink); }
+  .dcard .ctl .alt { background: var(--deep); color: var(--paper); }
+  .dcard .ctl button:disabled { opacity: .6; cursor: default; }
+  .dcard .ctl .msg { color: var(--dim); font-size: 13px; }
+  .dcard .alist { list-style: none; margin: 6px 0 0; padding: 0; font-size: 13px; }
+  .dcard .alist li { padding: 7px 0; border-top: 1px solid rgba(255,255,255,.06); }
+  .dcard .alist li:first-child { border-top: 0; }
+  .dcard .alist .arow { display: flex; justify-content: space-between; gap: 10px; }
+  .dcard .alist .tracks-bar, .dcard .alist .prog { height: 6px; margin: 6px 0 0; }
+  .dcard .alist li.a-pending .prog, .dcard .alist li.a-canceled .prog { opacity: .5; }
+  .dcard .alist li.a-canceled .t { color: var(--dim); }
+  .dcard .alist .astep { font-size: 12px; color: var(--dim); margin-top: 4px; }
+  .dcard .alist .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dcard .alist .r { flex: none; color: var(--dim); }
+  .dcard .alist .r.ok { color: var(--mint); } .dcard .alist .r.bad { color: var(--err); } .dcard .alist .r.now { color: var(--sun); }
+  .tb.s-canceled { opacity: .35; }
+  .j-retry { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  .j-retry p { margin: 0; flex-basis: 100%; color: var(--dim); font-size: 13px; }
+  .j-tries { color: var(--paper); }
+  .btn-retry { border: 0; border-radius: 999px; padding: 7px 14px; cursor: pointer; font-weight: 700; font-size: 13.5px;
+               background: var(--sun); color: var(--sun-ink); }
+  .btn-retry:hover { filter: brightness(1.06); }
+  .btn-retry:disabled { opacity: .6; cursor: default; }
+  .btn-retry:focus-visible { outline: 3px solid var(--paper); outline-offset: 2px; }
+  .retry-note { color: var(--err); font-size: 13px; }
+  .tb.s-downloading { box-shadow: inset 0 0 0 1px rgba(255, 210, 63, .45); }
+  @media (max-width: 640px) { .tracks-bar { gap: 2px; } }
+  .j-stats { display: flex; justify-content: space-between; color: var(--dim); font-size: 12.5px; }
+  .j-err { color: var(--err); font-size: 13px; margin: 6px 0 0; }
+  details { margin-top: 6px; }
+  summary { cursor: pointer; color: var(--pink); font-size: 13px; font-weight: 600; width: fit-content; }
+  .files { list-style: none; margin: 6px 0 0; padding: 0; font-size: 13px; }
+  .files li { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; }
+  .files .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .files .r { flex: none; color: var(--dim); display: flex; gap: 10px; }
+  .files a { color: var(--sun); font-weight: 700; text-decoration: none; }
+  .files a:hover { text-decoration: underline; }
+
+  /* Actividad con el bot: paso en curso, turno y demoras */
+  .loading .live { flex: 1; }
+  .live { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 4px 12px; align-items: start; }
+  .live .spin { margin-top: 3px; }
+  .live b { font-weight: 700; color: var(--paper); }
+  .live .step { grid-column: 2; color: var(--dim); font-size: 14px; }
+  .live .secs { color: var(--dim); font-weight: 400; margin-left: 8px; font-size: 13.5px; }
+  .live .slow { grid-column: 2; color: var(--sun); font-size: 13.5px; }
+  .live.waiting .spin { border-top-color: var(--dim); }
+  .sheet .live b { color: var(--deeper); }
+  .sheet .live .step, .sheet .live .secs { color: #5a6091; }
+  .sheet .live .slow { color: #8a5a00; }
+  .activity { display: flex; flex-direction: column; gap: 10px; max-width: 680px; margin-top: 14px; }
+  .activity:empty { display: none; }
+  .activity .live { background: var(--deep); border-radius: 14px; padding: 10px 14px; font-size: 14px; }
+
+  /* Avisos breves */
+  .toasts { position: fixed; top: 16px; right: 16px; z-index: 30; display: flex; flex-direction: column; gap: 10px;
+            width: min(380px, calc(100vw - 32px)); }
+  .toast { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 40px minmax(0, 1fr);
+           gap: 12px; align-items: center; padding: 12px 14px; border-radius: 14px; background: var(--paper); color: var(--deeper);
+           box-shadow: 0 14px 34px rgba(8,12,50,.35); animation: toast-in .25s ease-out; }
+  .toast .art { width: 40px; height: 40px; border-radius: 6px; position: relative; }
+  .toast b { display: block; font-weight: 700; }
+  .toast span { font-size: 13.5px; color: #5a6091; }
+  .toast.err { background: #ffe1dc; }
+  .toast.err b { color: #8f1d12; }
+  .toast:focus-visible { outline: 3px solid var(--sun); }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } }
+
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="bar-top">
+  <a class="mark" href="./">deez<i>load</i></a>
+  <span class="status" id="cfg">Conectando…</span>
+</div>
+<p class="demo" id="demoBar" hidden>Modo demostración: la página se abrió sin el servidor, así que muestra datos de ejemplo.</p>
+
+<section class="hero">
+  <h1>¿Qué disco quieres tener hoy?</h1>
+  <form class="search" id="searchForm" role="search">
+    <input id="artist" type="search" placeholder="Escribe un artista, p. ej. Soda Stereo" autocomplete="off" aria-label="Artista" />
+    <button class="btn" id="go" type="submit">Buscar</button>
+  </form>
+  <div class="activity" id="activity" role="status" aria-live="polite"></div>
+</section>
+
+<main id="results" aria-live="polite"></main>
+
+<div class="scrim" id="scrim"></div>
+<aside class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" aria-hidden="true">
+  <button class="x" id="sheetClose" aria-label="Cerrar">×</button>
+  <div id="sheetBody"></div>
+</aside>
+
+<div class="toasts" id="toasts"></div>
+
+<dialog class="disc-dlg" id="discDlg" aria-labelledby="discTitle">
+  <form method="dialog" id="discForm">
+    <h2 id="discTitle">Descargar la discografía</h2>
+    <p class="dd-lead">Los lanzamientos se descargan de uno en uno, en este orden. Las canciones que ya tienes en tu carpeta se saltan.</p>
+    <fieldset id="discSecs"><legend>Qué descargar</legend></fieldset>
+    <div class="dd-est" id="discEst" role="status"></div>
+    <div class="dd-actions">
+      <button type="button" class="dd-cancel" id="discCancel">Cancelar</button>
+      <button type="submit" class="btn" id="discGo">Descargar</button>
+    </div>
+  </form>
+</dialog>
+
+<section class="dock" id="dock" aria-label="Descargas">
+  <button class="dock-bar" id="dockBar" aria-expanded="false" aria-controls="tray">
+    <b>Descargas</b><span class="sum" id="dockSum">Sin descargas todavía</span><span class="chev" aria-hidden="true">⌃</span>
+  </button>
+  <div class="tray" id="tray">
+    <div class="par" id="par">
+      <span class="par-lbl" id="parLbl">Descargas simultáneas</span>
+      <div class="seg" role="group" aria-labelledby="parLbl" id="parSeg"></div>
+      <span class="par-hint" id="parHint" role="status"></span>
+    </div>
+    <div class="tray-in" id="jobsBox"><p class="empty">Cuando descargues un álbum, verás aquí su avance.</p></div></div>
+</section>
+
+<script>
+/* ===== Núcleo compartido: API, utilidades, portadas generadas y modo demo ===== */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+// Modo demo: al abrir el archivo con doble clic (file://) o con ?demo en la URL.
+const DEMO = location.protocol === "file:" || new URLSearchParams(location.search).has("demo");
+
+function esc(s) {
+  return (s ?? "").toString()
+    .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+function escAttr(s) { return esc(s).replaceAll('"', "&quot;"); }
+function fmtBytes(n) {
+  if (!n) return "0 B";
+  const u = ["B", "KB", "MB", "GB"]; let i = 0;
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return n.toFixed(n >= 10 || i === 0 ? 0 : 1) + " " + u[i];
+}
+function label(s) {
+  return { queued: "En cola", running: "Descargando", completed: "Listo", error: "Error" }[s] || s;
+}
+function jobPct(j) {
+  return j.size ? Math.min(100, Math.round((j.received / j.size) * 100)) : (j.status === "completed" ? 100 : 0);
+}
+function jobKey(j) { return j.id ?? `${j.artist}|${j.album}`; }
+function plural(n, one, many) { return `${n} ${n === 1 ? one : many}`; }
+
+/* ===== Adaptadores para el formato real del bot ===== */
+// La ficha del artista llega como varias líneas con emojis:
+// "👤 Artist: Soda Stereo\n💽 Albums numbers: 22\n👥 Fans on Deezer: 1773909"
+function parseArtist(text, fallback) {
+  const lines = (text || "").split(/\n+/).map((l) => l.replace(/^[^\p{L}\p{N}]+/u, "").trim()).filter(Boolean);
+  let name = "", meta = [], fans = null;
+  for (const l of lines) {
+    const m = l.match(/^([^:]{2,40}):\s*(.+)$/);
+    const key = m ? m[1].toLowerCase() : "";
+    const val = m ? m[2].trim() : l;
+    if (!name && (/^(artist|artista)$/.test(key) || !m)) { name = val; continue; }
+    const num = Number(val.replace(/[.,\s]/g, ""));
+    if (/album/.test(key) && num) meta.push(plural(num, "álbum en Deezer", "álbumes en Deezer"));
+    else if (/fan/.test(key) && num) { fans = num; meta.push(`${num.toLocaleString("es")} fans`); }
+    else meta.push(l);
+  }
+  return { name: name || fallback || "", meta, fans };
+}
+// "0:03:04" -> "3:04"; "1:02:10" se mantiene.
+function fmtDur(s) {
+  const m = (s || "").match(/^0?0:(\d{1,2}:\d{2})$/);
+  return m ? m[1].replace(/^0(\d)/, "$1") : (s || "");
+}
+// "2017-03-10" -> "10 mar 2017"
+function fmtDate(s) {
+  const m = (s || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return s || "";
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  return d.toLocaleDateString("es", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+}
+const SECTION_NAMES = {
+  "albums": "Álbumes", "singles and eps": "Singles y EP", "singles": "Singles", "eps": "EP",
+  "compilations": "Recopilaciones", "live": "En vivo", "live albums": "En vivo", "featured in": "Colaboraciones",
+};
+function secName(s) { return SECTION_NAMES[(s || "").trim().toLowerCase()] || s; }
+// Estado visible de una descarga. El servidor marca "running" también mientras
+// pide las pistas al bot o espera a que termine otra descarga.
+function jobView(j) {
+  const downloading = (j.tracks || []).some((t) => t.status === "downloading");
+  if (j.status === "running" && !j.total)
+    return j.paso
+      ? { status: "running", label: "Preparando", stats: j.paso }
+      : { status: "queued", label: "En espera", stats: "Esperando su turno con el bot…" };
+  if (j.status === "running" && !downloading && !j.done)
+    return { status: "queued", label: "En espera", stats: `${plural(j.total, "pista", "pistas")}, empieza al terminar la descarga anterior` };
+  return { status: j.status, label: label(j.status), stats: null };
+}
+
+async function jget(url) {
+  if (DEMO) return Mock.get(url);
+  const r = await fetch(url);
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
+  return r.json();
+}
+async function jpost(url, body) {
+  if (DEMO) return Mock.post(url, body);
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
+  return r.json().catch(() => ({}));
+}
+
+const API = {
+  config: () => jget("/api/config"),
+  albums: (artist) => jget(`/api/albums?artist=${encodeURIComponent(artist)}&index=0`),
+  tracks: (artist, album) =>
+    jget(`/api/tracks?artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}&index=0`),
+  download: (artist, album) => jpost("/api/download", { artist, album, index: 0 }),
+  jobs: () => jget("/api/jobs"),
+  activity: () => jget("/api/actividad"),
+  settings: () => jget("/api/ajustes"),
+  saveSettings: (values) => jpost("/api/ajustes", values),
+  retry: (id) => jpost(`/api/jobs/${encodeURIComponent(id)}/reintentar`, {}),
+  discographies: () => jget("/api/discografias"),
+  startDiscography: (body) => jpost("/api/discografias", body),
+  discographyAction: (id, action) => jpost(`/api/discografias/${encodeURIComponent(id)}/${action}`, {}),
+  estimate: (ids) => jpost("/api/estimacion", { ids }),
+  existing: (artist, tracks) => jpost("/api/existentes",
+    { artist, tracks: tracks.map((t) => ({ titulo: t.titulo || "", artista: t.artista || "" })) }),
+  covers: (artist, fans, albums) => jpost("/api/covers", { artist, fans, albums }),
+  albumInfo: (id) => jget(`/api/deezer/album/${encodeURIComponent(id)}`),
+};
+
+// Sondeo de descargas: solo vuelve a pintar si los datos cambiaron.
+function pollJobs(render) {
+  let sig = null;
+  const tick = async () => {
+    try {
+      const jobs = await API.jobs();
+      const s = JSON.stringify(jobs);
+      if (s !== sig) { sig = s; render(jobs); }
+    } catch (e) { /* silencioso */ }
+  };
+  tick();
+  // Con la pestaña oculta se sigue consultando, más despacio, para el título y los avisos.
+  let n = 0;
+  setInterval(() => { n++; if (document.visibilityState === "visible" || n % 4 === 0) tick(); }, 1500);
+  return tick;
+}
+
+/* ===== Avisos en vivo del servidor =====
+   Normal: una sola conexión Server-Sent Events (/api/eventos). El servidor manda el estado
+   completo al conectar y luego solo lo que cambia; el navegador se reconecta solo.
+   Respaldo (si los eventos no funcionan o en el modo demo): consultas adaptativas,
+   cada 1,5 s mientras hay algo en curso y cada 8 s si no. Cada pocos segundos se reintenta SSE. */
+function liveUpdates({ onJobs, onActivity, onSettings, onDiscs }) {
+  const jobsMap = new Map();
+  let ops = [], skew = 0, mode = "sse", es = null, fails = 0, pollTimer = null, retryTimer = null, boostUntil = 0;
+  const now = () => Date.now() / 1000;
+  const emitJobs = () => onJobs([...jobsMap.values()].sort((a, b) => (b.created || 0) - (a.created || 0)));
+  // Con SSE los segundos los cuenta el navegador (no hace falta preguntar cada segundo).
+  const timedOps = () => ops.map((o) => mode !== "sse" || o.creado == null ? o : {
+    ...o, segundos: Math.max(0, Math.round(now() - skew - o.creado)),
+    segundos_paso: Math.max(0, Math.round(now() - skew - o.inicio_paso)) });
+  const emitOps = () => onActivity(timedOps());
+  function apply(d, full) {
+    if (d.ahora) skew = now() - d.ahora;
+    if (d.jobs) {
+      if (full) jobsMap.clear();
+      for (const j of d.jobs) jobsMap.set(jobKey(j), j);
+      emitJobs();
+    }
+    if (d.actividad) { ops = d.actividad; emitOps(); }
+    if (d.ajustes && onSettings) onSettings(d.ajustes);
+    if (d.discografias && onDiscs) onDiscs(d.discografias);
+  }
+  setInterval(() => { if (ops.length) emitOps(); }, 1000);  // solo el reloj de pantalla, sin peticiones
+
+  function busy() {
+    return ops.length || Date.now() < boostUntil ||
+      [...jobsMap.values()].some((j) => j.status === "running" || j.status === "queued");
+  }
+  async function pollOnce() {
+    try {
+      const [js, act, discs] = await Promise.all([API.jobs(), API.activity(), API.discographies().catch(() => null)]);
+      apply({ jobs: js, actividad: act, ...(discs ? { discografias: discs } : {}) }, true);
+    } catch (e) { /* servidor caído: se reintenta en el siguiente turno */ }
+  }
+  function schedulePoll() {
+    clearTimeout(pollTimer);
+    if (mode !== "poll") return;
+    pollTimer = setTimeout(async () => { await pollOnce(); schedulePoll(); }, busy() ? 1500 : 8000);
+  }
+  function startPolling() {
+    if (mode === "poll") return;
+    mode = "poll";
+    pollOnce().then(schedulePoll);
+    if (onSettings) API.settings().then(onSettings).catch(() => {});
+    if (!DEMO && "EventSource" in window) { clearTimeout(retryTimer); retryTimer = setTimeout(startSSE, 20000); }
+  }
+  function startSSE() {
+    es?.close();
+    es = new EventSource("/api/eventos");
+    es.addEventListener("estado", (e) => {
+      fails = 0;
+      if (mode === "poll") { mode = "sse"; clearTimeout(pollTimer); clearTimeout(retryTimer); }
+      apply(JSON.parse(e.data), true);
+    });
+    es.addEventListener("cambios", (e) => apply(JSON.parse(e.data), false));
+    es.onerror = () => {
+      // El navegador reintenta solo (p. ej. si reinicias el servidor). Tras varios fallos seguidos
+      // se pasa a consultas y se vuelve a probar SSE más tarde.
+      if (++fails >= 4 || es.readyState === EventSource.CLOSED) { es.close(); startPolling(); }
+    };
+  }
+  if (DEMO || !("EventSource" in window)) { mode = ""; startPolling(); } else startSSE();
+
+  return {
+    // Tras una acción del usuario: con SSE el aviso llega solo; con consultas, se pregunta ya.
+    kick() {
+      emitOps();
+      if (mode === "poll") { boostUntil = Date.now() + 10000; pollOnce().then(schedulePoll); }
+    },
+    get mode() { return mode; },
+  };
+}
+
+/* ===== Actividad con el bot (pasos, turnos y demoras) ===== */
+const SLOW_SECONDS = 20;  // a partir de aquí se avisa que el bot va lento
+function opHeadline(op) {
+  const t = `«${op.titulo}»`;
+  return { buscar: `Buscando a ${t}`, album: `Abriendo ${t}`, descarga: `Preparando la descarga de ${t}` }[op.tipo]
+    || op.titulo;
+}
+function fmtSecs(s) { return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${s % 60} s`; }
+// Detalle de una operación: paso actual o turno, tiempo y aviso de demora.
+function opDetail(op, all) {
+  if (op.estado === "esperando") {
+    const busy = all.find((o) => o.estado === "en_curso");
+    const ahead = all.filter((o) => o.estado === "esperando" && o.segundos > op.segundos).length;
+    const who = busy ? ` mientras termina: ${opHeadline(busy).replace(/^./, (c) => c.toLowerCase())}` : "";
+    return { step: `En espera de turno${who}${ahead ? ` (${ahead} antes que esta)` : ""}.`, secs: op.segundos, slow: false };
+  }
+  return { step: op.paso || "Empezando…", secs: op.segundos, slow: op.segundos_paso >= SLOW_SECONDS };
+}
+const SLOW_TEXT = "El bot está tardando más de lo normal. Seguimos esperando su respuesta.";
+
+/* ===== Carátulas: la real de Deezer cuando existe; si no, la generada ===== */
+const COVERS = new Map();   // título (como lo muestra el bot) -> datos de Deezer: { id, mediana, grande, fecha, tipo, fans, explicito, link }
+const DETAILS = new Map();  // título -> detalle de Deezer: { sello, generos, duracion, pistas, fans, ... }
+let ARTIST_INFO = null;     // { id, nombre, foto, fans, albumes, link } del artista buscado
+function coverImg(src) {
+  // Va encima de la portada generada; si la imagen no carga se retira y queda la generada.
+  return `<img src="${escAttr(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">`;
+}
+function artHTML(title, size = "mediana") {
+  const c = COVERS.get(title);
+  return `<span class="art" style="${sleeveStyle(title)}" data-cover="${escAttr(title)}" data-size="${size}">${c?.mediana ? coverImg(c[size] || c.mediana) : ""}</span>`;
+}
+function applyCovers(root = document) {
+  $$("[data-cover]", root).forEach((el) => {
+    const c = COVERS.get(el.dataset.cover);
+    if (c?.mediana && !el.querySelector("img")) el.insertAdjacentHTML("afterbegin", coverImg(c[el.dataset.size] || c.mediana));
+  });
+}
+async function loadCovers(artist, fans, titles) {
+  ARTIST_INFO = null;
+  try {
+    const r = await API.covers(artist, fans, titles);
+    for (const [t, c] of Object.entries(r.albumes || {})) COVERS.set(t, c);
+    ARTIST_INFO = r.artista || null;
+  } catch (e) { /* sin Deezer: portadas generadas y solo los datos del bot */ }
+  applyCovers();
+  return ARTIST_INFO;
+}
+async function loadDetails(title) {
+  const id = COVERS.get(title)?.id;
+  if (!id || DETAILS.has(title)) return DETAILS.get(title) || null;
+  try {
+    const r = await API.albumInfo(id);
+    if (!r.error) DETAILS.set(title, r);
+  } catch (e) { /* sin detalle */ }
+  return DETAILS.get(title) || null;
+}
+
+/* Formatos para los datos del álbum */
+const TYPE_LABELS = { album: "Álbum", single: "Single", ep: "EP", compile: "Recopilación" };
+function typeLabel(t) { return TYPE_LABELS[(t || "").toLowerCase()] || ""; }
+function yearOf(fecha) { const m = (fecha || "").match(/^(\d{4})/); return m ? m[1] : ""; }
+function secsOf(d) { return (d || "").split(":").reduce((a, x) => a * 60 + (Number(x) || 0), 0); }
+function fmtLength(s) {
+  const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+  return h ? `${h} h ${m} min` : `${Math.max(1, m)} min`;
+}
+
+/* Portadas generadas: cada álbum recibe un diseño estable derivado de su nombre. */
+function hash(s) {
+  let h = 2166136261;
+  for (const c of s) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+const SLEEVE_PALETTES = [
+  ["#F5A524", "#3B2A4F"], ["#E86A5A", "#F6E7CF"], ["#62D6A9", "#1F3A4A"], ["#8FA8FF", "#2B1F3F"],
+  ["#F2D16B", "#B4483C"], ["#C9B8F0", "#4A2F5C"], ["#F08FB0", "#29324A"], ["#9BD0E6", "#B05A2E"],
+  ["#EDE6DA", "#2E5E4E"], ["#FF9B54", "#1E4A5C"], ["#1E2A5E", "#F3C5B5"], ["#D8F0E0", "#7A2E4A"],
+];
+function sleeveStyle(title) {
+  const h = hash(title || "?");
+  const [a, b] = SLEEVE_PALETTES[h % SLEEVE_PALETTES.length];
+  const kind = (h >>> 5) % 6;
+  const ang = ((h >>> 9) % 8) * 45;
+  const x = 18 + ((h >>> 13) % 64), y = 18 + ((h >>> 19) % 64);
+  switch (kind) {
+    case 0: return `background:repeating-radial-gradient(circle at ${x}% ${y}%, ${a} 0 5%, ${b} 5% 11%)`;
+    case 1: return `background:repeating-linear-gradient(${ang}deg, ${a} 0 9%, ${b} 9% 18%)`;
+    case 2: return `background:radial-gradient(circle at 50% 104%, ${a} 0 46%, transparent 46.5%), ${b}`;
+    case 3: return `background:linear-gradient(${ang}deg, ${a} 0 50%, ${b} 50% 100%)`;
+    case 4: return `background:radial-gradient(${a} 26%, transparent 28%) 0 0/25% 25%, ${b}`;
+    default: return `background:radial-gradient(circle at ${x}% ${y}%, ${b} 0 9%, ${a} 9% 31%, transparent 31.5%), ${b}`;
+  }
+}
+
+/* ===== Datos de ejemplo para el modo demo ===== */
+const Mock = (() => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const SECCIONES = {
+    "Albums": ["Soda Stereo", "Nada personal", "Signos", "Doble vida", "Canción animal", "Dynamo", "Sueño Stereo",
+               "Ruido blanco", "Comfort y música para volar", "El último concierto", "Me verás volver",
+               "Zona de promesas", "Obras cumbre", "Me verás volver (Hits & más)"],
+    "Singles and EPs": ["De música ligera", "Persiana americana", "Cuando pase el temblor", "En la ciudad de la furia"],
+  };
+  const KNOWN = {
+    "canción animal": {
+      fecha: "1990-11-01",
+      pistas: [
+        ["(En) el séptimo día", "4:30"], ["Un millón de años luz", "4:23"], ["Canción animal", "3:24"],
+        ["1990", "3:52"], ["Sueles dejarme solo", "4:46"], ["Entre caníbales", "4:14"],
+        ["Té para tres", "2:20"], ["Hombre al agua", "4:40"], ["Cae el sol", "3:36"], ["De música ligera", "3:32"],
+      ].map(([titulo, duracion], i) => ({ n: i + 1, titulo, artista: "Soda Stereo", duracion: "0:0" + duracion })),
+    },
+  };
+  function rnd(seed) { return () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296; }
+  function tracksFor(album) {
+    const k = (album || "").toLowerCase();
+    if (KNOWN[k]) return KNOWN[k];
+    const r = rnd(hash(album));
+    const single = Object.values(SECCIONES).at(-1).includes(album);
+    const n = single ? 1 + Math.floor(r() * 2) : 8 + Math.floor(r() * 5);
+    return {
+      fecha: `${1984 + Math.floor(r() * 24)}-0${1 + Math.floor(r() * 9)}-1${Math.floor(r() * 9)}`,
+      pistas: Array.from({ length: n }, (_, i) => ({
+        n: i + 1, titulo: single && i === 0 ? album : `Pista ${i + 1}`,
+        artista: i === 2 && !single ? "Soda Stereo, Andrea Echeverri" : "Soda Stereo",
+        duracion: `0:0${2 + Math.floor(r() * 4)}:${String(Math.floor(r() * 60)).padStart(2, "0")}`,
+      })),
+    };
+  }
+  const ops = [];
+  let chain = Promise.resolve();
+  // Simula el turno único del bot: cada operación espera a la anterior y avanza por pasos.
+  function withBot(tipo, titulo, steps) {
+    const op = { id: Math.random().toString(36).slice(2, 10), tipo, titulo, estado: "esperando",
+                 paso: null, creado: Date.now(), inicio_paso: Date.now() };
+    ops.push(op);
+    const run = chain.then(async () => {
+      op.estado = "en_curso";
+      for (const [txt, ms] of steps) { op.paso = txt; op.inicio_paso = Date.now(); if (op.onStep) op.onStep(txt); await wait(ms); }
+    });
+    chain = run.catch(() => {});
+    return { op, done: run.finally(() => ops.splice(ops.indexOf(op), 1)) };
+  }
+  const jobs = [];
+  const discs = [];
+  async function runDisc(dc) {  // demo: álbum por álbum, como el servidor
+    for (let k = 0; k < dc.albums.length; k++) {
+      while (dc.paused && !dc.cancel) await wait(300);
+      if (dc.cancel) break;
+      dc.status = "running"; dc.current = k; dc.albums[k].status = "running";
+      const j = addJob(dc.artist, dc.albums[k].title); j.discografia = dc.id; dc.albums[k].job_id = j.id;
+      while (j.status !== "completed" && j.status !== "error") await wait(300);
+      dc.albums[k].status = j.status === "completed" ? "completed" : "error";
+      if (k < dc.albums.length - 1) { dc.nota = "Pausa entre álbumes"; await wait(800); dc.nota = null; }
+    }
+    dc.albums.forEach((a) => { if (a.status === "pending") a.status = "canceled"; });
+    dc.status = dc.cancel ? "canceled" : "completed"; dc.current = null;
+  }
+  const pubDisc = (dc) => {
+    const n = (st) => dc.albums.filter((a) => a.status === st).length;
+    return { id: dc.id, artist: dc.artist, name: dc.name, status: dc.paused && dc.status !== "running" && dc.status !== "completed" && dc.status !== "canceled" ? "paused" : dc.status,
+      pausando: dc.paused && dc.status === "running", cancelando: dc.cancel && dc.status === "running", created: dc.created,
+      current: dc.current, nota: dc.nota, total: dc.albums.length, listos: n("completed"), ya_estaban: n("exists"),
+      con_error: n("error"), cancelados: n("canceled"), albums: dc.albums };
+  };
+  function addJob(artist, album, preset) {
+    const { pistas } = tracksFor(album);
+    const r = rnd(hash(album) + 7);
+    const tracks = pistas.map((p) => ({ title: p.titulo, size: Math.round(5e6 + r() * 7e6), got: 0, status: "pending" }));
+    const j = { id: `demo${jobs.length}`, created: Date.now() / 1000 + jobs.length, artist, album, status: "queued", total: tracks.length, done: 0, received: 0,
+                size: tracks.reduce((a, t) => a + t.size, 0), tracks };
+    if (preset) preset(j);
+    else prepare(j);
+    jobs.push(j);
+    return j;
+  }
+  function prepare(j) {
+    const { artist, album } = j;
+    {
+      j.status = "running"; j.preparing = true; j.paso = null;
+      const { op, done } = withBot("descarga", album, [
+        [`Buscando a «${artist}» en el bot`, 1200], ["Leyendo la lista de álbumes: página 1", 900],
+        [`Abriendo «${album}»`, 900], ["Pidiendo las pistas al bot (GET ALL)", 1500]]);
+      op.onStep = (t) => (j.paso = t);
+      done.then(() => { j.preparing = false; j.paso = null; });
+    }
+  }
+  function finishTrack(j, t) { t.got = t.size; t.status = "done"; t.file = `${j.artist} - ${t.title}.mp3`; j.done++; }
+  addJob("Soda Stereo", "Signos", (j) => { j.tracks.forEach((t) => finishTrack(j, t)); j.status = "completed"; });
+  addJob("Soda Stereo", "Doble vida", (j) => { j.status = "running"; j.tracks.slice(0, 3).forEach((t) => finishTrack(j, t)); });
+  addJob("Soda Stereo", "Ruido blanco", (j) => { j.status = "error"; j.error = "El bot no envió pistas para este álbum."; j.failed = true; });
+  const mockSettings = { descargas_simultaneas: 1 };
+  function tick() {
+    const ready = jobs.filter((j) => j.status === "running" && !j.preparing);
+    for (const j of jobs) if (j.status === "queued") j.status = "running";
+    let active = ready.reduce((a, j) => a + j.tracks.filter((t) => t.status === "downloading").length, 0);
+    for (const j of ready) for (const t of j.tracks)  // cupos en orden de pedido, como el servidor
+      if (t.status === "pending" && active < mockSettings.descargas_simultaneas) { t.status = "downloading"; active++; }
+    for (const j of ready) {
+      for (const t of j.tracks) if (t.status === "downloading") {
+        t.got = Math.min(t.size, t.got + 500000 + Math.random() * 900000);
+        if (t.got >= t.size) finishTrack(j, t);
+      }
+      if (j.tracks.every((t) => t.status === "done")) j.status = "completed";
+    }
+    for (const j of jobs) j.received = j.tracks.reduce((a, t) => a + t.got, 0);
+  }
+  setInterval(tick, 500);
+  const pub = (j) => j.failed ? ({
+    id: j.id, created: j.created, artist: j.artist, album: j.album, status: "error", error: j.error,
+    total: 0, done: 0, received: 0, size: 0, tracks: [], intentos: j.intentos || 1 }) : j.preparing ? ({
+    id: j.id, created: j.created, artist: j.artist, album: j.album, status: "running", total: 0, done: 0, received: 0, size: 0,
+    paso: j.paso, tracks: [] }) : ({
+    id: j.id, created: j.created, discografia: j.discografia || null, artist: j.artist, album: j.album, status: j.status, total: j.total, done: j.done,
+    received: Math.round(j.tracks.reduce((a, t) => a + t.got, 0)), size: j.size,
+    tracks: j.tracks.map((t) => ({ title: t.title, status: t.status, file: t.file || null,
+                                   size: t.size, progress: Math.round(t.got) })),
+  });
+  return {
+    async get(url) {
+      const u = new URL(url, "http://demo");
+      const p = u.searchParams;
+      if (u.pathname === "/api/jobs") return jobs.map(pub).reverse();
+      if (u.pathname === "/api/ajustes") return { ...mockSettings, maximo: 5 };
+      if (u.pathname === "/api/discografias") return discs.map(pubDisc).reverse();
+      if (u.pathname === "/api/actividad") {
+        const now = Date.now();
+        return ops.map((o) => ({ id: o.id, tipo: o.tipo, titulo: o.titulo, estado: o.estado, paso: o.paso,
+          segundos: Math.round((now - o.creado) / 1000), segundos_paso: Math.round((now - o.inicio_paso) / 1000) }));
+      }
+      if (u.pathname === "/api/config") await wait(300);
+      if (u.pathname.startsWith("/api/deezer/album/")) {
+        await wait(400);
+        const id = Number(u.pathname.split("/").pop());
+        const title = Object.values(SECCIONES).flat().find((t) => hash(t) % 100000 === id) || "";
+        const { pistas } = tracksFor(title);
+        return { id, sello: "Sony Music Entertainment", generos: ["Rock", "Latino"], pistas: pistas.length,
+                 duracion: pistas.reduce((a, p) => a + secsOf(p.duracion), 0), fans: 1000 + (hash(title) % 90000) };
+      }
+      if (u.pathname === "/api/config") return { bot: "deezload_bot", downloads_dir: "D:\\musica\\descargas" };
+      if (u.pathname === "/api/albums") {
+        const a = p.get("artist");
+        await withBot("buscar", a, [[`Buscando a «${a}» en el bot`, 1300], ["Abriendo la lista de álbumes", 900],
+          ["Leyendo la lista de álbumes: página 1", 700], ["Leyendo la lista de álbumes: página 2", 700]]).done;
+        return { artista: "👤 Artist: Soda Stereo\n💽 Albums numbers: 22\n👥 Fans on Deezer: 1773909", total: Object.values(SECCIONES).flat().length, secciones: SECCIONES };
+      }
+      if (u.pathname === "/api/tracks") {
+        const a = p.get("album");
+        await withBot("album", a, [[`Buscando a «${p.get("artist")}» en el bot`, 900], ["Leyendo la lista de álbumes: página 1", 600],
+          [`Buscando «${a}» en otra página de la lista (1 revisadas)`, 900], [`Abriendo «${a}»`, 700],
+          ["Leyendo las canciones: página 1", 600]]).done;
+        return tracksFor(a);
+      }
+      throw new Error("Ruta no encontrada");
+    },
+    async post(url, body) {
+      const retry = url.match(/^\/api\/jobs\/([^/]+)\/reintentar$/);
+      if (retry) {
+        await wait(300);
+        const j = jobs.find((x) => x.id === decodeURIComponent(retry[1]));
+        if (!j || j.status !== "error") throw new Error("Solo se puede reintentar una descarga que falló.");
+        j.error = null; j.failed = false; j.intentos = (j.intentos || 1) + 1;
+        j.tracks.forEach((t) => { t.got = 0; t.status = "pending"; t.file = null; }); j.done = 0;
+        prepare(j);
+        return { job_id: j.id };
+      }
+      if (url === "/api/discografias") {
+        await wait(200);
+        const dc = { id: `disc${discs.length}`, artist: body.artist, name: body.name || body.artist, status: "queued",
+          created: Date.now() / 1000, current: null, nota: null, paused: false, cancel: false,
+          albums: body.albums.map((a) => ({ title: a.title, section: a.section, status: "pending", job_id: null, error: null })) };
+        discs.push(dc); runDisc(dc);
+        return { id: dc.id };
+      }
+      const act = url.match(/^\/api\/discografias\/([^/]+)\/(pausar|reanudar|cancelar)$/);
+      if (act) {
+        const dc = discs.find((x) => x.id === act[1]);
+        if (act[2] === "pausar") dc.paused = true;
+        if (act[2] === "reanudar") dc.paused = false;
+        if (act[2] === "cancelar") { dc.cancel = true; dc.paused = false; }
+        return pubDisc(dc);
+      }
+      if (url === "/api/estimacion") {
+        await wait(400);
+        const albumes = {};
+        for (const t of Object.values(SECCIONES).flat()) {
+          const id = hash(t) % 100000;
+          if (body.ids.includes(id)) { const { pistas } = tracksFor(t); albumes[id] = { pistas: pistas.length, duracion: pistas.reduce((a, p) => a + secsOf(p.duracion), 0) }; }
+        }
+        return { albumes, libre: 120e9 };
+      }
+      if (url === "/api/existentes") {  // demo: las 3 primeras de «Canción animal» ya están
+        await wait(150);
+        return { existentes: body.tracks.length === 10 && body.tracks[0].titulo.startsWith("(En)") ? [0, 1, 2] : [] };
+      }
+      if (url === "/api/ajustes") {
+        await wait(200);
+        mockSettings.descargas_simultaneas = body.descargas_simultaneas;
+        return { ...mockSettings, maximo: 5 };
+      }
+      if (url === "/api/covers") {  // demo: datos tipo Deezer sin imágenes
+        await wait(300);
+        const singles = SECCIONES["Singles and EPs"] || [];
+        const albumes = {};
+        for (const t of body.albums) albumes[t] = { id: hash(t) % 100000, mediana: null, grande: null,
+          fecha: tracksFor(t).fecha, tipo: singles.includes(t) ? "single" : (/vivo|concierto|blanco|comfort/i.test(t) ? "album" : /obras|zona|hits/i.test(t) ? "compile" : "album"),
+          fans: 1000 + (hash(t) % 90000), explicito: false, link: null };
+        return { artista: { id: 1, nombre: "Soda Stereo", foto: null, fans: 1773909, albumes: 22, link: null }, albumes };
+      }
+      await wait(400);
+      addJob(body.artist, body.album);
+      return { ok: true };
+    },
+  };
+})();
+
+
+const state = { artist: "", artistName: "", album: null, jobOpen: new Map(), lastFocus: null };
+
+async function loadConfig() {
+  try {
+    const c = await API.config();
+    $("#cfg").textContent = `@${c.bot} guarda en ${c.downloads_dir}`;
+  } catch (e) {
+    $("#cfg").classList.add("off");
+    $("#cfg").textContent = "Sin conexión con el servidor";
+  }
+}
+
+async function search(ev) {
+  ev?.preventDefault();
+  const artist = $("#artist").value.trim();
+  if (!artist) { $("#artist").focus(); return; }
+  state.artist = artist;
+  document.body.classList.add("searched");
+  $("#go").disabled = true;
+  $("#results").innerHTML = `<div class="loading" data-op="buscar" data-title="${escAttr(artist)}">${liveHTML({ head: `Buscando a «${artist}»`, step: "Conectando con el bot…" })}</div>`;
+  refreshActivity();
+  try {
+    renderAlbums(await API.albums(artist));
+  } catch (e) {
+    $("#results").innerHTML = `<p class="error">No se pudo buscar «${esc(artist)}»: ${esc(e.message)}</p>`;
+  } finally { $("#go").disabled = false; }
+}
+
+function renderAlbums(data) {
+  if (data.error) { $("#results").innerHTML = `<p class="error">${esc(data.error)}</p>`; return; }
+  const who = parseArtist(data.artista, state.artist);
+  state.artistName = who.name;
+  const sections = data.secciones || {};
+  const meta = [plural(data.total ?? 0, "lanzamiento", "lanzamientos"), ...who.meta.filter((m) => !/Deezer$/.test(m))];
+  state.sections = sections;
+  let html = `<div class="artist"><h2>${esc(state.artistName)}</h2><p id="artistMeta">${meta.map(esc).join("<br>")}</p>
+    ${Object.keys(sections).length ? `<button type="button" class="disc-btn" id="discBtn">Descargar discografía</button>` : ""}</div>`;
+  Object.entries(sections).forEach(([sec, albums], i) => {
+    html += `<section class="shelf"><div class="shelf-h"><h3>${esc(secName(sec))}</h3><span>${albums.length}</span>
+      <div class="nav"><button data-dir="-1" data-row="r${i}" aria-label="Anteriores">‹</button><button data-dir="1" data-row="r${i}" aria-label="Siguientes">›</button></div></div>
+      <div class="row" id="r${i}">${albums.map((a) => `<button class="disc" data-album="${escAttr(a)}">
+        ${artHTML(a)}<span class="name">${esc(a)}</span><span class="sub"></span></button>`).join("")}</div></section>`;
+  });
+  if (!Object.keys(sections).length) html += `<p class="loading">No encontramos álbumes. Prueba con otra forma del nombre.</p>`;
+  $("#results").innerHTML = html;
+  $("#discBtn")?.addEventListener("click", openDiscDialog);
+  updateDiscButton();
+  const search = state.artist;
+  state.coversReady = loadCovers(state.artistName, who.fans, Object.values(sections).flat()).then((artist) => {
+    if (state.artist !== search) return;  // llegó tarde: el usuario ya buscó otra cosa
+    applyAlbumMeta(artist);
+    if (state.album) { refreshFacts(); loadDetails(state.album).then(refreshFacts); applyCovers($("#sheet")); }
+  });
+  $$(".disc", $("#results")).forEach((el) => (el.onclick = () => openAlbum(el)));
+  $$(".nav button", $("#results")).forEach((b) => (b.onclick = () => {
+    const row = document.getElementById(b.dataset.row);
+    row.scrollBy({ left: row.clientWidth * 0.8 * Number(b.dataset.dir), behavior: "smooth" });
+  }));
+}
+
+function openSheet() {
+  document.body.classList.add("open");
+  $("#sheet").setAttribute("aria-hidden", "false");
+  setTimeout(() => $("#sheetClose").focus(), 50);
+}
+function closeSheet() {
+  document.body.classList.remove("open");
+  $("#sheet").setAttribute("aria-hidden", "true");
+  $$(".disc[aria-current]").forEach((d) => d.removeAttribute("aria-current"));
+  state.album = null;
+  state.lastFocus?.focus();
+}
+
+async function openAlbum(el) {
+  const album = el.dataset.album;
+  state.album = album; state.lastFocus = el;
+  $$(".disc[aria-current]").forEach((d) => d.removeAttribute("aria-current"));
+  el.setAttribute("aria-current", "true");
+  state.trackData = null;
+  $("#sheetBody").innerHTML = `${artHTML(album, "grande")}<h2 id="sheetTitle">${esc(album)}</h2>
+    <p class="meta">${sheetMeta(album)}</p><dl class="facts" id="facts">${factsHTML(album, null)}</dl><div class="loading" data-op="album" data-title="${escAttr(album)}">${liveHTML({ head: "Cargando pistas", step: "Conectando con el bot…" })}</div>`;
+  openSheet();
+  refreshActivity();
+  loadDetails(album).then(() => { if (state.album === album) refreshFacts(); });
+  try {
+    const data = await API.tracks(state.artist, album);
+    if (state.album === album) renderTracks(album, data);
+  } catch (e) {
+    if (state.album === album) $("#sheetBody .loading").outerHTML = `<p class="note err">No se pudieron cargar las pistas: ${esc(e.message)}</p>`;
+  }
+}
+
+function renderTracks(album, data) {
+  const tracks = data.pistas || [];
+  if (data.error) data.aviso = data.error;
+  state.trackData = data;
+  let html = `${artHTML(album, "grande")}<h2 id="sheetTitle">${esc(album)}</h2>
+    <p class="meta">${sheetMeta(album)}</p>
+    ${tracks.length ? `<button class="btn" id="dlBtn">Descargar álbum</button><span class="note" id="dlNote" role="status"></span><p class="have-note" id="haveNote" hidden></p>` : ""}
+    <dl class="facts" id="facts">${factsHTML(album, data)}</dl>`;
+  if (data.aviso) html += `<p class="aviso">${esc(data.aviso)}</p>`;
+  if (tracks.length) {
+    html += `<ol class="tracks">${tracks.map((t) => `<li><span class="n">${t.n}</span><span class="t"><span class="ttl">${esc(t.titulo)}</span>${guestHTML(t)}</span>
+      <span class="d">${esc(fmtDur(t.duracion))}</span></li>`).join("")}</ol>`;
+  } else if (!data.aviso) {
+    html += `<p class="aviso">Este lanzamiento no tiene pistas para listar. Suele pasar con singles que el bot no puede bajar como álbum completo.</p>`;
+  }
+  $("#sheetBody").innerHTML = html;
+  const b = $("#dlBtn");
+  if (b) b.onclick = () => startDownload(album, b);
+  if (tracks.length) markExisting(album, tracks);
+}
+
+// Canciones que ya están en la carpeta de descargas (por artista y título).
+async function markExisting(album, tracks) {
+  let found = [];
+  try { found = (await API.existing(state.artistName || state.artist, tracks)).existentes || []; } catch (e) { return; }
+  if (state.album !== album || !found.length) return;
+  const items = $$("#sheetBody .tracks li");
+  found.forEach((i) => items[i]?.classList.add("have"));
+  const note = $("#haveNote");
+  const missing = tracks.length - found.length;
+  note.textContent = missing
+    ? `${found.length} de ${tracks.length} canciones ya están en tu carpeta. Al descargar ${missing === 1 ? "se baja solo la que falta" : `se bajan solo las ${missing} que faltan`}.`
+    : `Ya tienes las ${tracks.length} canciones en tu carpeta.`;
+  note.hidden = false;
+}
+
+async function startDownload(album, btn) {
+  const note = $("#dlNote");
+  btn.disabled = true; btn.textContent = "Añadiendo…"; note.className = "note"; note.textContent = "";
+  try {
+    await API.download(state.artist, album);
+    note.textContent = "Añadido a descargas. Sigue su avance en la bandeja de abajo.";
+    setDock(true);
+    refreshJobs();
+  } catch (e) {
+    note.className = "note err"; note.textContent = `No se pudo descargar: ${e.message}`;
+  } finally { btn.disabled = false; btn.textContent = "Descargar álbum"; }
+}
+
+// Barra de avance del álbum: un tramo por canción, que se llena con el avance de esa descarga.
+// Mientras aún no hay lista de pistas (preparando), una barra simple.
+function trackPct(t) {
+  if (t.status === "done" || t.status === "error" || t.status === "exists") return 100;
+  return t.size ? Math.min(100, Math.round(((t.progress || 0) / t.size) * 100)) : 0;
+}
+function progressHTML(j) {
+  const ts = j.tracks || [];
+  if (!ts.length) return `<div class="prog"><i style="width:${jobPct(j)}%"></i></div>`;
+  const state = { done: "descargada", exists: "ya estaba en la carpeta", error: "falló", downloading: null, pending: "en espera" };
+  return `<div class="tracks-bar" role="img" aria-label="${escAttr(`${j.done} de ${ts.length} canciones descargadas`)}">${ts.map((t, i) => {
+    const pct = trackPct(t);
+    const tip = `${i + 1}. ${t.title}: ${state[t.status] ?? `${pct}%`}${t.status === "error" && t.error ? ` (${t.error})` : ""}`;
+    return `<span class="tb s-${escAttr(t.status || "pending")}" title="${escAttr(tip)}"><i style="width:${pct}%"></i></span>`;
+  }).join("")}</div>`;
+}
+
+function setDock(expanded) {
+  $("#dock").classList.toggle("expanded", expanded);
+  $("#dockBar").setAttribute("aria-expanded", String(expanded));
+}
+
+function renderJobs(jobs) {
+  LAST_JOBS = jobs;
+  notifyJobs(jobs);
+  const active = jobs.filter((j) => j.status === "running" || j.status === "queued");
+  if (!jobs.length && !DISCS.length) {
+    $("#dockSum").textContent = "Sin descargas todavía";
+    $("#jobsBox").innerHTML = `<p class="empty">Cuando descargues un álbum, verás aquí su avance.</p>`;
+    return;
+  }
+  if (active.length) {
+    const size = active.reduce((a, j) => a + (j.size || 0), 0), got = active.reduce((a, j) => a + (j.received || 0), 0);
+    const pct = size ? Math.round((got / size) * 100) : 0;
+    $("#dockSum").textContent = !size
+      ? `Preparando ${active.length === 1 ? `«${active[0].album}»` : `${active.length} álbumes`}`
+      : `${active.length === 1 ? active[0].album : `${active.length} álbumes`} al ${pct}%`;
+  } else {
+    const ok = jobs.filter((j) => j.status === "completed").length, bad = jobs.filter((j) => j.status === "error").length;
+    $("#dockSum").textContent = [ok && plural(ok, "álbum listo", "álbumes listos"),
+      bad && `${bad} con error`].filter(Boolean).join(", ") || plural(jobs.length, "álbum", "álbumes");
+  }
+  const discIds = new Set(DISCS.map((x) => x.id));
+  const activeDisc = (id) => DISCS.some((x) => x.id === id && !["completed", "canceled"].includes(x.status));
+  const loose = jobs.filter((j) => !j.discografia || !discIds.has(j.discografia) || (j.status === "error" && !activeDisc(j.discografia)));
+  $("#jobsBox").innerHTML = DISCS.map((dc) => discCardHTML(dc, jobs)).join("") + loose.map((j) => jobCardHTML(j)).join("");
+  $$("#jobsBox details").forEach((det) =>
+    det.addEventListener("toggle", () => state.jobOpen.set(det.dataset.key, det.open)));
+}
+function jobCardHTML(j) {
+    const key = jobKey(j);
+    const open = state.jobOpen.get(key) ?? false;
+    const files = (j.tracks || []).map((t) => {
+      const right = t.file
+        ? `${t.status === "exists" ? `<span class="had">ya estaba</span>` : ""}${t.size ? `<span>${fmtBytes(t.size)}</span>` : ""}<a href="/files/${encodeURIComponent(t.file)}" download>Guardar</a>`
+        : t.status === "downloading" ? `<span class="now">bajando${t.size && t.progress ? ` ${Math.min(99, Math.round((t.progress / t.size) * 100))}%` : "…"}</span>`
+        : t.status === "error" ? `<span class="bad" title="${escAttr(t.error || "")}">falló</span>` : "";
+      return `<li><span class="t">${esc(t.title)}</span><span class="r">${right}</span></li>`;
+    }).join("");
+    const v = jobView(j);
+    return `<div class="job st-${escAttr(v.status)}">${artHTML(j.album)}<div>
+      <div class="j-top"><b>${esc(j.album)}</b><span class="pill">${esc(v.label)}</span></div>
+      <div class="j-sub">${esc(j.artist)}</div>
+      ${j.status === "error" ? `<p class="j-err">${esc(j.error || "La descarga falló.")}</p>${retryHTML(j)}` : ""}
+      ${j.status === "error" && !j.total ? "" : `${progressHTML(j)}
+      <div class="j-stats">${v.stats ? `<span>${esc(v.stats)}</span>` : `<span>${j.done} de ${j.total} pistas${j.existing ? ` (${j.existing} ya ${j.existing === 1 ? "estaba" : "estaban"})` : ""}</span><span>${fmtBytes(j.received)} de ${fmtBytes(j.size)}</span>`}</div>`}
+      ${files ? `<details data-key="${escAttr(key)}" ${open ? "open" : ""}><summary>Archivos</summary><ul class="files">${files}</ul></details>` : ""}
+    </div></div>`;
+}
+
+/* ===== Datos del álbum y del artista (Deezer + bot) ===== */
+function applyAlbumMeta(artist) {
+  $$(".disc").forEach((el) => {
+    const i = COVERS.get(el.dataset.album);
+    const sub = el.querySelector(".sub");
+    if (!i || !sub) return;
+    sub.innerHTML = [yearOf(i.fecha), typeLabel(i.tipo)].filter(Boolean).map((x) => `<span>${esc(x)}</span>`).join("")
+      + (i.explicito ? `<span class="tag-e" title="Letra explícita">E</span>` : "");
+  });
+  if (!artist) return;
+  const head = $(".artist");
+  if (head && artist.foto && !head.querySelector(".avatar"))
+    head.insertAdjacentHTML("afterbegin", `<img class="avatar" src="${escAttr(artist.foto)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`);
+  if (artist.link && !$("#artistMeta .dz"))
+    $("#artistMeta").insertAdjacentHTML("beforeend", `<br><a class="dz" href="${escAttr(artist.link)}" target="_blank" rel="noopener">Ver artista en Deezer</a>`);
+}
+function sheetMeta(album) {
+  const i = COVERS.get(album);
+  return `<span>${esc(state.artistName)}</span>${i?.explicito ? `<span class="tag-e" title="Letra explícita">E</span>` : ""}`;
+}
+// Datos del álbum: lo que diga el bot (lo que se va a descargar) manda; Deezer completa el resto.
+function factsHTML(album, data) {
+  const dz = COVERS.get(album) || {}, det = DETAILS.get(album) || {};
+  const tracks = data?.pistas || [];
+  const secs = tracks.reduce((a, t) => a + secsOf(t.duracion), 0) || det.duracion;
+  const fans = det.fans ?? dz.fans;
+  const rows = [
+    ["Lanzamiento", fmtDate(data?.fecha || det.fecha || dz.fecha)],
+    ["Tipo", typeLabel(det.tipo || dz.tipo)],
+    ["Pistas", tracks.length || det.pistas],
+    ["Duración", secs ? fmtLength(secs) : ""],
+    ["Sello", det.sello],
+    [(det.generos || []).length > 1 ? "Géneros" : "Género", (det.generos || []).join(", ")],
+    ["Fans en Deezer", fans ? Number(fans).toLocaleString("es") : ""],
+  ].filter(([, v]) => v);
+  const link = det.link || dz.link;
+  return rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")
+    + (link ? `<div class="dzl"><a href="${escAttr(link)}" target="_blank" rel="noopener">Abrir el álbum en Deezer</a></div>` : "");
+}
+function refreshFacts() {
+  const el = $("#facts");
+  if (el && state.album) el.innerHTML = factsHTML(state.album, state.trackData);
+}
+// Artistas invitados: el bot da el artista de cada canción; se muestra si no es solo el del álbum.
+function guestHTML(t) {
+  const a = (t.artista || "").trim();
+  if (!a || a.toLowerCase() === (state.artistName || "").toLowerCase()) return "";
+  return `<span class="feat">${esc(a)}</span>`;
+}
+
+/* ===== Actividad: qué está haciendo el bot ahora mismo ===== */
+function liveHTML({ head, step, secs, slow, waiting }) {
+  if (step && step.startsWith(head)) step = step.slice(head.length).trim() ? step : null;
+  if (step === head) step = null;
+  return `<div class="live${waiting ? " waiting" : ""}"><span class="spin"></span>
+    <b>${esc(head)}${secs != null ? `<span class="secs">${fmtSecs(secs)}</span>` : ""}</b>
+    ${step ? `<span class="step">${esc(step)}</span>` : ""}${slow ? `<span class="slow">${SLOW_TEXT}</span>` : ""}</div>`;
+}
+function renderActivity(ops) {
+  const shown = new Set();
+  // Las operaciones que el usuario está mirando se muestran en su sitio (resultados o ficha)...
+  $$("[data-op]").forEach((el) => {
+    if (el.closest("#sheet") && !document.body.classList.contains("open")) return;  // ficha cerrada
+    const op = ops.find((o) => o.tipo === el.dataset.op && o.titulo === el.dataset.title && !shown.has(o.id));
+    if (!op) return;
+    shown.add(op.id);
+    const det = opDetail(op, ops);
+    el.innerHTML = liveHTML({ head: opHeadline(op), step: det.step, secs: det.secs, slow: det.slow, waiting: op.estado === "esperando" });
+  });
+  // ...y el resto (por ejemplo, la preparación de una descarga) bajo el buscador.
+  $("#activity").innerHTML = ops.filter((o) => !shown.has(o.id)).map((op) => {
+    const det = opDetail(op, ops);
+    return liveHTML({ head: opHeadline(op), step: det.step, secs: det.secs, slow: det.slow, waiting: op.estado === "esperando" });
+  }).join("");
+}
+function refreshActivity() { live?.kick(); }
+
+/* ===== Avisos al terminar descargas y progreso en el título ===== */
+const seenStatus = new Map();
+let firstJobs = true, doneWhileHidden = 0;
+function toast(job, ok) {
+  const t = document.createElement("button");
+  t.className = "toast" + (ok ? "" : " err");
+  t.innerHTML = `${artHTML(job.album)}<div>
+    <b>${ok ? `«${esc(job.album)}» descargado` : `Falló la descarga de «${esc(job.album)}»`}</b>
+    <span>${ok ? `${doneSummary(job)} Toca para ver los archivos.` : `${esc(job.error || "El bot no entregó las pistas.")} Toca para volver a intentarlo desde Descargas.`}</span></div>`;
+  t.onclick = () => { setDock(true); t.remove(); };
+  $("#toasts").prepend(t);
+  setTimeout(() => t.remove(), ok ? 7000 : 12000);
+}
+/* ===== Discografía: elegir secciones, estimar y seguir el avance ===== */
+let DISCS = [], LAST_JOBS = [];
+const seenDisc = new Map();
+let firstDiscs = true;
+const DISC_LABEL = { queued: "En cola", running: "Descargando", paused: "En pausa", completed: "Listo", canceled: "Cancelado" };
+const ALBUM_STATE = { pending: "en cola", running: "descargando", retry: "en cola (2.º intento)", completed: "listo",
+                      exists: "ya lo tenías", error: "falló", canceled: "cancelado" };
+const FLAC_BYTES_PER_SEC = 135000;  // ~1 MB cada 8 s: lo que pesan en promedio tus FLAC
+const sameArtist = (a, b) => (a || "").trim().toLowerCase() === (b || "").trim().toLowerCase();
+function activeDiscFor(artist) {
+  return DISCS.find((x) => sameArtist(x.artist, artist) && !["completed", "canceled"].includes(x.status));
+}
+function updateDiscButton() {
+  const b = $("#discBtn");
+  if (!b) return;
+  const running = activeDiscFor(state.artist);
+  b.textContent = running ? "Ver discografía en curso" : "Descargar discografía";
+  b.dataset.mode = running ? "ver" : "nueva";
+}
+function onDiscs(list) {
+  for (const dc of list) {  // aviso al terminar una discografía (no uno por álbum)
+    const prev = seenDisc.get(dc.id);
+    seenDisc.set(dc.id, dc.status);
+    if (!firstDiscs && prev !== dc.status && (dc.status === "completed" || dc.status === "canceled")) discToast(dc);
+  }
+  firstDiscs = false;
+  DISCS = [...list].sort((a, b) => (b.created || 0) - (a.created || 0));
+  updateDiscButton();
+  renderJobs(LAST_JOBS);
+}
+function discSummary(dc) {
+  return [dc.listos && plural(dc.listos, "listo", "listos"), dc.ya_estaban && `${dc.ya_estaban} ya los tenías`,
+          dc.con_error && `${dc.con_error} con error`, dc.cancelados && plural(dc.cancelados, "cancelado", "cancelados")]
+    .filter(Boolean).join(", ") || "Sin álbumes descargados";
+}
+function discToast(dc) {
+  const t = document.createElement("button");
+  t.className = "toast" + (dc.con_error ? " err" : "");
+  t.innerHTML = `<span class="art" style="${sleeveStyle(dc.name)}"></span><div>
+    <b>Discografía de ${esc(dc.name)} ${dc.status === "canceled" ? "cancelada" : "terminada"}</b>
+    <span>${esc(discSummary(dc))}.${dc.con_error ? " Puedes volver a intentar los que fallaron desde Descargas." : ""}</span></div>`;
+  t.onclick = () => { setDock(true); t.remove(); };
+  $("#toasts").prepend(t);
+  setTimeout(() => t.remove(), 12000);
+}
+function discCardHTML(dc, jobs) {
+  const jobOf = (a) => jobs.find((j) => j.id === a.job_id);
+  const segs = dc.albums.map((a, i) => {
+    const j = jobOf(a);
+    const pct = a.status === "running" && j ? jobPct(j) : ["completed", "exists", "error"].includes(a.status) ? 100 : 0;
+    const cls = { completed: "done", exists: "exists", error: "error", running: "downloading", canceled: "canceled" }[a.status] || "pending";
+    return `<span class="tb s-${cls}" title="${escAttr(`${i + 1}. ${a.title}: ${ALBUM_STATE[a.status] || a.status}`)}"><i style="width:${pct}%"></i></span>`;
+  }).join("");
+  const cur = dc.current != null ? dc.albums[dc.current] : null;
+  const next = dc.albums.find((a) => a.status === "pending" || a.status === "retry");
+  let line;
+  if (dc.status === "running" && dc.nota) line = `${dc.nota}. Sigue «${next?.title || ""}».`;
+  else if (dc.status === "running" && cur) line = `Álbum ${dc.current + 1} de ${dc.total}: «${cur.title}»`;
+  else if (dc.status === "queued") line = "Esperando a que termine otra discografía.";
+  else if (dc.status === "paused") line = next ? `En pausa. Al reanudar sigue «${next.title}».` : "En pausa.";
+  else line = discSummary(dc) + ".";
+  let ctl = "";
+  if (dc.status === "running" || dc.status === "queued" || dc.status === "paused") {
+    const msg = dc.cancelando ? "Se cancelará al terminar el álbum en curso."
+      : dc.pausando ? "Se pausará al terminar el álbum en curso." : "";
+    ctl = `<div class="ctl">
+      ${dc.cancelando ? "" : dc.status === "paused" || dc.pausando
+        ? `<button type="button" class="main" data-disc="${escAttr(dc.id)}" data-act="reanudar">Reanudar</button>`
+        : `<button type="button" class="alt" data-disc="${escAttr(dc.id)}" data-act="pausar">Pausar</button>`}
+      ${dc.cancelando ? "" : `<button type="button" class="alt" data-disc="${escAttr(dc.id)}" data-act="cancelar">Cancelar</button>`}
+      ${msg ? `<span class="msg">${msg}</span>` : ""}</div>`;
+  }
+  const key = `disc|${dc.id}`;
+  // La lista se ve abierta mientras la discografía está en curso (si la cierras, se respeta).
+  const open = state.jobOpen.get(key) ?? ["running", "paused", "queued"].includes(dc.status);
+  const list = dc.albums.map((a) => {
+    const j = jobOf(a);
+    const cls = { completed: "ok", exists: "ok", error: "bad", running: "now" }[a.status] || "";
+    let label = ALBUM_STATE[a.status] || a.status;
+    if (a.status === "running" && j) label = j.total ? `descargando ${j.done} de ${j.total}` : jobView(j).label.toLowerCase();
+    // Misma barra que un álbum suelto: un tramo por canción (o simple mientras se prepara / si no empezó)
+    const bar = j ? progressHTML(j) : `<div class="prog"><i style="width:0"></i></div>`;
+    const step = a.status === "running" && j && !j.total ? `<div class="astep">${esc(jobView(j).stats || "")}</div>` : "";
+    return `<li class="a-${escAttr(a.status)}"><div class="arow"><span class="t">${esc(a.title)}</span>
+      <span class="r ${cls}" ${a.error ? `title="${escAttr(a.error)}"` : ""}>${esc(label)}</span></div>${bar}${step}</li>`;
+  }).join("");
+  const st = { running: "running", completed: "completed", canceled: "error", paused: "queued", queued: "queued" }[dc.status] || "queued";
+  return `<div class="dcard job st-${st}"><span class="art" style="${sleeveStyle(dc.name)}"></span><div>
+      <div class="j-top"><b>Discografía de ${esc(dc.name)}</b><span class="pill">${esc(DISC_LABEL[dc.status] || dc.status)}</span></div>
+      <div class="now-line">${esc(line)}</div>
+      <div class="tracks-bar" role="img" aria-label="${escAttr(`${dc.listos + dc.ya_estaban} de ${dc.total} lanzamientos terminados`)}">${segs}</div>
+      <div class="j-stats"><span>${dc.listos + dc.ya_estaban} de ${dc.total} lanzamientos</span><span>${dc.con_error ? `${dc.con_error} con error` : ""}</span></div>
+      ${ctl}
+      <details data-key="${escAttr(key)}" ${open ? "open" : ""}><summary>Lanzamientos</summary><ul class="alist">${list}</ul></details>
+    </div></div>`;
+}
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-disc]");
+  if (!b) return;
+  b.disabled = true;
+  try { await API.discographyAction(b.dataset.disc, b.dataset.act); refreshJobs(); }
+  catch (err) { b.disabled = false; b.insertAdjacentHTML("afterend", `<span class="msg">No se pudo: ${esc(err.message)}</span>`); }
+});
+
+// Diálogo: casillas por sección (todas marcadas), estimación y espacio libre
+let estData = null;
+async function openDiscDialog() {
+  if ($("#discBtn")?.dataset.mode === "ver") { setDock(true); return; }
+  const secs = state.sections || {};
+  $("#discTitle").textContent = `Descargar la discografía de ${state.artistName}`;
+  $("#discSecs").innerHTML = `<legend>Qué descargar</legend>` + Object.entries(secs).map(([sec, albums]) =>
+    `<label class="dd-sec"><input type="checkbox" name="sec" value="${escAttr(sec)}" checked>
+      <span>${esc(secName(sec))}</span><small>${plural(albums.length, "lanzamiento", "lanzamientos")}</small></label>`).join("");
+  $$("#discSecs input").forEach((i) => (i.onchange = renderEstimate));
+  estData = null;
+  renderEstimate();
+  $("#discDlg").showModal();
+  await state.coversReady?.catch(() => {});  // los datos de Deezer (ids) pueden estar llegando todavía
+  const ids = Object.values(secs).flat().map((t) => COVERS.get(t)?.id).filter(Boolean);
+  try { estData = await API.estimate(ids); } catch (e) { estData = { albumes: {}, libre: null }; }
+  renderEstimate();
+}
+function chosenAlbums() {
+  const secs = state.sections || {};
+  return $$("#discSecs input:checked").flatMap((i) => (secs[i.value] || []).map((title) => ({ title, section: i.value })));
+}
+function renderEstimate() {
+  const chosen = chosenAlbums();
+  $("#discGo").disabled = !chosen.length;
+  $("#discGo").textContent = chosen.length ? `Descargar ${plural(chosen.length, "lanzamiento", "lanzamientos")}` : "Descargar";
+  const est = $("#discEst");
+  if (!chosen.length) { est.innerHTML = "Marca al menos una sección."; return; }
+  if (!estData) { est.innerHTML = `<b>${plural(chosen.length, "lanzamiento", "lanzamientos")}</b>. Calculando canciones y espacio…`; return; }
+  let tracks = 0, secs = 0, unknown = 0;
+  for (const a of chosen) {
+    const info = estData.albumes[String(COVERS.get(a.title)?.id)];
+    if (info && info.pistas) { tracks += info.pistas; secs += info.duracion || 0; } else unknown++;
+  }
+  const bytes = secs * FLAC_BYTES_PER_SEC;
+  const gb = (n) => `${(n / 1e9).toLocaleString("es", { maximumFractionDigits: n >= 1e10 ? 0 : 1 })} GB`;
+  const parts = [`<b>${plural(chosen.length, "lanzamiento", "lanzamientos")}</b>`];
+  if (tracks) parts.push(`unas <b>${tracks}</b> canciones`, `unos <b>${gb(bytes)}</b>`);
+  let html = parts.join(", ") + (tracks ? " (aproximado)" : "") + ".";
+  if (unknown) html += ` ${unknown === chosen.length ? "Deezer no tiene datos para calcular el tamaño." : `${plural(unknown, "lanzamiento no entra", "lanzamientos no entran")} en el cálculo porque Deezer no tiene sus datos.`}`;
+  if (estData.libre != null) html += `<br>Espacio libre en la carpeta de descargas: <b>${gb(estData.libre)}</b>.`;
+  if (estData.libre != null && bytes > estData.libre) html += `<br><span class="warn">Puede que no alcance el espacio.</span>`;
+  est.innerHTML = html;
+}
+$("#discCancel").onclick = () => $("#discDlg").close();
+$("#discForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const albums = chosenAlbums();
+  if (!albums.length) return;
+  const go = $("#discGo");
+  go.disabled = true; go.textContent = "Iniciando…";
+  try {
+    await API.startDiscography({ artist: state.artist, name: state.artistName, albums });
+    $("#discDlg").close();
+    setDock(true);
+    refreshJobs();
+  } catch (err) {
+    $("#discEst").innerHTML += `<br><span class="warn">No se pudo iniciar: ${esc(err.message)}</span>`;
+    go.disabled = false; renderEstimate();
+  }
+});
+
+/* ===== Reintentar descargas que fallaron ===== */
+const NO_TRACKS_RE = /no envi[oó] pistas/i;
+function retryHint(j) {
+  if (NO_TRACKS_RE.test(j.error || ""))
+    return "A veces el bot tarda en enviar las pistas o está ocupado con otras descargas. Vuelve a revisar en unos segundos.";
+  if ((j.tracks || []).some((t) => t.status === "done" || t.status === "exists"))
+    return "Al reintentar se saltan las canciones que ya se guardaron; solo se bajan las que fallaron.";
+  return "";
+}
+function retryHTML(j) {
+  const hint = retryHint(j);
+  const again = (j.intentos || 1) > 1 ? ` <span class="j-tries">Intento ${j.intentos}.</span>` : "";
+  return `<div class="j-retry">${hint ? `<p>${esc(hint)}${again}</p>` : again ? `<p>${again}</p>` : ""}
+    <button type="button" class="btn-retry" data-retry="${escAttr(j.id)}">Volver a intentar</button>
+    <span class="retry-note" role="status"></span></div>`;
+}
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-retry]");
+  if (!b) return;
+  const note = b.nextElementSibling;
+  b.disabled = true; b.textContent = "Reintentando…";
+  try {
+    await API.retry(b.dataset.retry);
+    refreshJobs();
+  } catch (err) {
+    b.disabled = false; b.textContent = "Volver a intentar";
+    if (note) note.textContent = `No se pudo reintentar: ${err.message}`;
+  }
+});
+
+function doneSummary(job) {
+  const had = job.existing || 0, fresh = job.total - had;
+  if (!had) return `${plural(job.total, "pista guardada", "pistas guardadas")}.`;
+  if (!fresh) return `Las ${job.total} pistas ya estaban en tu carpeta; no se bajó nada.`;
+  return `${plural(fresh, "pista nueva", "pistas nuevas")}; ${had} ya ${had === 1 ? "estaba" : "estaban"} en tu carpeta.`;
+}
+function notifyJobs(jobs) {
+  for (const j of jobs) {
+    const key = jobKey(j), prev = seenStatus.get(key);
+    seenStatus.set(key, j.status);
+    if (firstJobs || prev === j.status) continue;
+    if ((j.status === "completed" || j.status === "error") && !j.discografia) {
+      toast(j, j.status === "completed");
+      if (document.visibilityState !== "visible") doneWhileHidden++;
+    }
+  }
+  firstJobs = false;
+  const active = jobs.filter((j) => j.status === "running" || j.status === "queued");
+  const size = active.reduce((a, j) => a + (j.size || 0), 0), got = active.reduce((a, j) => a + (j.received || 0), 0);
+  document.title = active.length
+    ? `(${size ? Math.round((got / size) * 100) + "%" : "preparando"}) deezload`
+    : doneWhileHidden ? `(${doneWhileHidden} ${doneWhileHidden === 1 ? "lista" : "listas"}) deezload` : "deezload";
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && doneWhileHidden) { doneWhileHidden = 0; document.title = "deezload"; refreshActivity(); }
+});
+
+/* ===== Descargas simultáneas (1 = en secuencia, hasta 5) ===== */
+const PAR = { n: 1, max: 5 };
+function parHint(n) {
+  return n === 1 ? "Una pista a la vez, álbum por álbum." : `Hasta ${n} pistas a la vez, en el orden en que pediste los álbumes.`;
+}
+function renderPar(note, cls) {
+  $("#parSeg").innerHTML = Array.from({ length: PAR.max }, (_, i) => i + 1).map((n) =>
+    `<button type="button" data-n="${n}" aria-pressed="${n === PAR.n}">${n === 1 ? "En secuencia" : n}</button>`).join("");
+  const hint = $("#parHint");
+  hint.className = "par-hint" + (cls ? " " + cls : "");
+  hint.textContent = note || parHint(PAR.n);
+  $$("#parSeg button").forEach((b) => (b.onclick = () => savePar(Number(b.dataset.n))));
+}
+async function loadPar() {
+  try { const s = await API.settings(); PAR.n = s.descargas_simultaneas; PAR.max = s.maximo || 5; } catch (e) { /* valores por defecto */ }
+  renderPar();
+}
+let parTimer, savingPar = false;
+async function savePar(n) {
+  if (n === PAR.n) return;
+  savingPar = true;
+  const prev = PAR.n;
+  PAR.n = n; renderPar("Guardando…");
+  $(`#parSeg button[data-n="${n}"]`)?.focus();
+  try {
+    const s = await API.saveSettings({ descargas_simultaneas: n });
+    PAR.n = s.descargas_simultaneas;
+    renderPar(s.aviso || `${parHint(PAR.n)} Se aplica también a lo que se está descargando.`, s.aviso ? "err" : "ok");
+  } catch (e) {
+    PAR.n = prev; renderPar(`No se pudo cambiar: ${e.message}`, "err");
+  }
+  $(`#parSeg button[data-n="${PAR.n}"]`)?.focus();
+  savingPar = false;
+  clearTimeout(parTimer);
+  parTimer = setTimeout(() => renderPar(), 5000);
+}
+
+$("#searchForm").addEventListener("submit", search);
+$("#dockBar").onclick = () => setDock(!$("#dock").classList.contains("expanded"));
+$("#sheetClose").onclick = closeSheet;
+$("#scrim").onclick = closeSheet;
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && document.body.classList.contains("open")) closeSheet(); });
+if (DEMO) $("#demoBar").hidden = false;
+loadConfig();
+renderPar();  // con SSE, el valor real llega en el primer aviso
+var live = liveUpdates({
+  onJobs: renderJobs,
+  onDiscs,
+  onActivity: renderActivity,
+  onSettings: (s) => {  // p. ej. si lo cambiaste en otra pestaña
+    if (savingPar || (s.descargas_simultaneas === PAR.n && (s.maximo || 5) === PAR.max)) return;
+    PAR.n = s.descargas_simultaneas; PAR.max = s.maximo || 5; renderPar();
+  },
+});
+const refreshJobs = () => live.kick();
+</script>
+</body>
+</html>

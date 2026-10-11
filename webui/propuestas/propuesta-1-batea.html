@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>deezload</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&display=swap" rel="stylesheet" />
+<style>
+  /* Propuesta 1: Batea — buscar discos como en una tienda de vinilos */
+  :root {
+    --bg: #201828; --bg2: #2a2133; --raise: #33293e; --line: #43374f;
+    --txt: #f3ede4; --muted: #ab9fb8; --amber: #f5a524; --amber-ink: #2b1a00;
+    --ok: #62d6a9; --err: #ff8070;
+    --font: "Archivo", system-ui, "Segoe UI", sans-serif;
+    --header-h: 72px;
+  }
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body { margin: 0; background: var(--bg); color: var(--txt);
+         font: 15px/1.5 var(--font); font-variant-numeric: tabular-nums; }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+
+  /* Cabecera */
+  .top { position: sticky; top: 0; z-index: 10; min-height: var(--header-h);
+         display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+         padding: 14px 28px; background: rgba(32, 24, 40, .94);
+         backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .mark { font-weight: 900; font-stretch: 125%; font-size: 21px; letter-spacing: -.02em;
+          color: var(--txt); text-decoration: none; }
+  .search { flex: 1 1 360px; max-width: 640px; display: flex; gap: 8px; }
+  .search input { flex: 1; min-width: 0; background: var(--bg2); border: 1px solid var(--line);
+                  border-radius: 10px; padding: 11px 14px; outline: none; }
+  .search input::placeholder { color: var(--muted); }
+  .search input:focus { border-color: var(--amber); }
+  .status { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end;
+            font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+  .status b { color: var(--txt); font-weight: 600; display: inline-flex; align-items: center; gap: 7px; }
+  .status b::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+  .status.off b::before { background: var(--err); }
+
+  .btn { border: 0; border-radius: 10px; padding: 11px 18px; cursor: pointer; font-weight: 650;
+         background: var(--amber); color: var(--amber-ink); white-space: nowrap; }
+  .btn:hover { filter: brightness(1.08); }
+  .btn:disabled { opacity: .55; cursor: default; filter: none; }
+  .btn.ghost { background: transparent; color: var(--txt); border: 1px solid var(--line); }
+
+  .demo { margin: 0; padding: 8px 28px; background: #3a2d18; color: #f7d48f; font-size: 13px; }
+
+  /* Distribución */
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 28px;
+            padding: 28px; align-items: start; max-width: 1500px; margin: 0 auto; }
+  @media (max-width: 960px) { .layout { grid-template-columns: 1fr; padding: 20px 16px; }
+                              .top { padding: 12px 16px; gap: 12px; position: static; }
+                              .status { margin-left: 0; align-items: flex-start; } }
+
+  /* Estado vacío */
+  .intro { display: grid; grid-template-columns: auto 1fr; gap: 36px; align-items: center;
+           padding: 48px 8px; }
+  .fan { position: relative; width: 190px; height: 170px; }
+  .fan .art { position: absolute; width: 130px; height: 130px; border-radius: 4px;
+              box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  .fan .art:nth-child(1) { left: 0; top: 30px; transform: rotate(-9deg); }
+  .fan .art:nth-child(2) { left: 30px; top: 14px; transform: rotate(-2deg); }
+  .fan .art:nth-child(3) { left: 60px; top: 0; transform: rotate(6deg); }
+  .intro h1 { margin: 0 0 8px; font-size: clamp(26px, 3.4vw, 38px); font-weight: 850;
+              font-stretch: 115%; letter-spacing: -.02em; line-height: 1.05; }
+  .intro p { margin: 0; color: var(--muted); max-width: 46ch; }
+  @media (max-width: 600px) { .intro { grid-template-columns: 1fr; padding: 24px 0; } }
+
+  /* Artista */
+  .artist-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+                 flex-wrap: wrap; margin: 4px 0 8px; }
+  .artist-head h1 { margin: 0; font-size: clamp(34px, 5.2vw, 64px); line-height: .95;
+                    font-weight: 900; font-stretch: 125%; letter-spacing: -.035em; white-space: pre-line; }
+  .artist-head p { margin: 0; color: var(--muted); }
+
+  .shelf { margin-top: 30px; }
+  .shelf > h2 { display: flex; align-items: baseline; gap: 10px; margin: 0 0 14px;
+                font-size: 17px; font-weight: 700; }
+  .shelf > h2 span { color: var(--muted); font-weight: 400; font-size: 14px; }
+
+  .bin { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 22px 16px; }
+  .sleeve { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 8px; min-width: 0;
+            border-radius: 6px; }
+  .sleeve .art { aspect-ratio: 1; border-radius: 4px; position: relative;
+                 box-shadow: 0 1px 0 rgba(255,255,255,.08) inset, 0 6px 16px rgba(0,0,0,.28);
+                 transition: transform .18s ease, box-shadow .18s ease; }
+  .art::after { content: ""; position: absolute; inset: 0; border-radius: inherit;
+                background: linear-gradient(135deg, rgba(255,255,255,.16), transparent 42%); }
+  .sleeve .name { font-size: 13.5px; font-weight: 550; line-height: 1.3; font-stretch: 92%;
+                  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .sleeve:hover .art { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,.4); }
+  .sleeve:focus-visible { outline: 2px solid var(--amber); outline-offset: 4px; }
+  .sleeve[aria-expanded="true"] .art { outline: 3px solid var(--amber); outline-offset: 3px; transform: translateY(-4px); }
+  .sleeve[aria-expanded="true"] .name { color: var(--amber); }
+
+  /* Detalle del álbum, abierto dentro de la batea */
+  .detail { grid-column: 1 / -1; display: grid; grid-template-columns: 200px minmax(0, 1fr) auto;
+            gap: 28px; padding: 24px; background: var(--bg2); border: 1px solid var(--line);
+            border-radius: 14px; animation: open .22s ease-out; }
+  @keyframes open { from { opacity: 0; transform: translateY(-6px); } }
+  .detail .big { aspect-ratio: 1; border-radius: 4px; position: relative;
+                 box-shadow: 0 14px 34px rgba(0,0,0,.4); align-self: start; }
+  .detail h3 { margin: 0; font-size: 28px; line-height: 1.05; font-weight: 850; font-stretch: 110%;
+               letter-spacing: -.02em; }
+  .meta { display: flex; gap: 14px; color: var(--muted); margin: 6px 0 16px; font-size: 14px; }
+  .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .note { font-size: 13.5px; color: var(--ok); }
+  .note.err { color: var(--err); }
+  .close { all: unset; cursor: pointer; width: 34px; height: 34px; display: grid; place-items: center;
+           border-radius: 50%; color: var(--muted); font-size: 22px; line-height: 1; }
+  .close:hover { background: var(--raise); color: var(--txt); }
+  .tracks { list-style: none; margin: 0; padding: 0; columns: 2 300px; column-gap: 28px; }
+  .tracks li { display: flex; gap: 12px; padding: 8px 2px; border-bottom: 1px solid var(--line);
+               break-inside: avoid; font-size: 14px; }
+  .tracks .n { width: 22px; text-align: right; color: var(--muted); flex: none; }
+  .tracks .t { flex: 1; min-width: 0; }
+  .tracks .d { color: var(--muted); flex: none; }
+  .aviso { color: var(--muted); font-size: 13.5px; margin: 0 0 12px; }
+  @media (max-width: 700px) {
+    .detail { grid-template-columns: 96px minmax(0, 1fr); padding: 16px; gap: 16px; }
+    .detail .close { grid-column: 2; grid-row: 1; justify-self: end; }
+    .detail .body { grid-column: 1 / -1; }
+    .detail h3 { font-size: 22px; }
+  }
+
+  .loading, .error { color: var(--muted); padding: 20px 0; display: flex; gap: 10px; align-items: center; }
+  .error { color: var(--err); }
+  .spin { width: 15px; height: 15px; border: 2px solid var(--line); border-top-color: var(--amber);
+          border-radius: 50%; animation: spin .8s linear infinite; flex: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Cola de descargas */
+  .queue { position: sticky; top: calc(var(--header-h) + 20px); max-height: calc(100vh - var(--header-h) - 40px);
+           overflow: auto; background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+  @media (max-width: 960px) { .queue { position: static; max-height: none; } }
+  .queue > h2 { margin: 0 0 14px; font-size: 17px; font-weight: 700; display: flex; gap: 10px; align-items: baseline; }
+  .queue > h2 span { color: var(--muted); font-weight: 400; font-size: 14px; }
+  .q-empty { color: var(--muted); font-size: 14px; margin: 0; }
+  .job { padding: 14px 0; border-top: 1px solid var(--line); }
+  .job:first-of-type { border-top: 0; padding-top: 2px; }
+  .j-head { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+  .j-head .art { width: 44px; height: 44px; border-radius: 3px; position: relative; }
+  .j-title b { display: block; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .j-title span { color: var(--muted); font-size: 13px; }
+  .badge { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 20px; background: var(--raise); color: var(--muted); }
+  .st-running .badge { color: var(--amber); background: rgba(245,165,36,.12); }
+  .st-completed .badge { color: var(--ok); background: rgba(98,214,169,.12); }
+  .st-error .badge { color: var(--err); background: rgba(255,128,112,.12); }
+  /* Medidor segmentado tipo VU */
+  .meter { height: 9px; margin: 12px 0 7px; border-radius: 2px;
+           background: repeating-linear-gradient(90deg, var(--line) 0 5px, transparent 5px 7px); }
+  .meter i { display: block; height: 100%; width: 0; transition: width .4s ease; background: var(--amber);
+             -webkit-mask: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px);
+                     mask: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px); }
+  .st-completed .meter i { background: var(--ok); }
+  .st-error .meter i { background: var(--err); }
+  .j-stats { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--muted); }
+  .j-err { color: var(--err); font-size: 13px; margin: 8px 0 0; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; font-size: 13px; color: var(--muted); padding: 4px 0; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "▸"; display: inline-block; width: 14px; text-align: center; margin-right: 2px; transition: transform .15s; }
+  details[open] summary::before { transform: rotate(90deg); }
+  summary:hover { color: var(--txt); }
+  .files { list-style: none; margin: 4px 0 0; padding: 0; }
+  .files li { display: flex; gap: 10px; justify-content: space-between; font-size: 13px; padding: 5px 0; }
+  .files .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .files .r { flex: none; color: var(--muted); display: flex; gap: 10px; }
+  .files a { color: var(--amber); text-decoration: none; font-weight: 600; }
+  .files a:hover { text-decoration: underline; }
+  .files .now { color: var(--amber); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="mark" href="./">deezload</a>
+  <form class="search" id="searchForm" role="search">
+    <input id="artist" type="search" placeholder="Busca un artista, p. ej. Soda Stereo" autocomplete="off" aria-label="Artista" />
+    <button class="btn" id="go" type="submit">Buscar</button>
+  </form>
+  <div class="status" id="cfg"><b>Conectando…</b></div>
+</header>
+<p class="demo" id="demoBar" hidden>Modo demostración: la página se abrió sin el servidor, así que muestra datos de ejemplo.</p>
+
+<main class="layout">
+  <section id="crate" aria-live="polite"></section>
+  <aside class="queue" aria-label="Descargas">
+    <h2>Descargas <span id="qCount"></span></h2>
+    <div id="jobsBox"><p class="q-empty">Cuando descargues un álbum, verás aquí su avance.</p></div>
+  </aside>
+</main>
+
+<script>
+/* ===== Núcleo compartido: API, utilidades, portadas generadas y modo demo ===== */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+// Modo demo: al abrir el archivo con doble clic (file://) o con ?demo en la URL.
+const DEMO = location.protocol === "file:" || new URLSearchParams(location.search).has("demo");
+
+function esc(s) {
+  return (s ?? "").toString()
+    .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+function escAttr(s) { return esc(s).replaceAll('"', "&quot;"); }
+function fmtBytes(n) {
+  if (!n) return "0 B";
+  const u = ["B", "KB", "MB", "GB"]; let i = 0;
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return n.toFixed(n >= 10 || i === 0 ? 0 : 1) + " " + u[i];
+}
+function label(s) {
+  return { queued: "En cola", running: "Descargando", completed: "Listo", error: "Error" }[s] || s;
+}
+function jobPct(j) {
+  return j.size ? Math.min(100, Math.round((j.received / j.size) * 100)) : (j.status === "completed" ? 100 : 0);
+}
+function jobKey(j) { return j.id ?? `${j.artist}|${j.album}`; }
+function plural(n, one, many) { return `${n} ${n === 1 ? one : many}`; }
+
+async function jget(url) {
+  if (DEMO) return Mock.get(url);
+  const r = await fetch(url);
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
+  return r.json();
+}
+async function jpost(url, body) {
+  if (DEMO) return Mock.post(url, body);
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
+  return r.json().catch(() => ({}));
+}
+
+const API = {
+  config: () => jget("/api/config"),
+  albums: (artist) => jget(`/api/albums?artist=${encodeURIComponent(artist)}&index=0`),
+  tracks: (artist, album) =>
+    jget(`/api/tracks?artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}&index=0`),
+  download: (artist, album) => jpost("/api/download", { artist, album, index: 0 }),
+  jobs: () => jget("/api/jobs"),
+};
+
+// Sondeo de descargas: solo vuelve a pintar si los datos cambiaron.
+function pollJobs(render) {
+  let sig = null;
+  const tick = async () => {
+    try {
+      const jobs = await API.jobs();
+      const s = JSON.stringify(jobs);
+      if (s !== sig) { sig = s; render(jobs); }
+    } catch (e) { /* silencioso */ }
+  };
+  tick();
+  setInterval(() => { if (document.visibilityState === "visible") tick(); }, 1500);
+  return tick;
+}
+
+/* Portadas generadas: cada álbum recibe un diseño estable derivado de su nombre. */
+function hash(s) {
+  let h = 2166136261;
+  for (const c of s) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+const SLEEVE_PALETTES = [
+  ["#F5A524", "#3B2A4F"], ["#E86A5A", "#F6E7CF"], ["#62D6A9", "#1F3A4A"], ["#8FA8FF", "#2B1F3F"],
+  ["#F2D16B", "#B4483C"], ["#C9B8F0", "#4A2F5C"], ["#F08FB0", "#29324A"], ["#9BD0E6", "#B05A2E"],
+  ["#EDE6DA", "#2E5E4E"], ["#FF9B54", "#1E4A5C"], ["#1E2A5E", "#F3C5B5"], ["#D8F0E0", "#7A2E4A"],
+];
+function sleeveStyle(title) {
+  const h = hash(title || "?");
+  const [a, b] = SLEEVE_PALETTES[h % SLEEVE_PALETTES.length];
+  const kind = (h >>> 5) % 6;
+  const ang = ((h >>> 9) % 8) * 45;
+  const x = 18 + ((h >>> 13) % 64), y = 18 + ((h >>> 19) % 64);
+  switch (kind) {
+    case 0: return `background:repeating-radial-gradient(circle at ${x}% ${y}%, ${a} 0 5%, ${b} 5% 11%)`;
+    case 1: return `background:repeating-linear-gradient(${ang}deg, ${a} 0 9%, ${b} 9% 18%)`;
+    case 2: return `background:radial-gradient(circle at 50% 104%, ${a} 0 46%, transparent 46.5%), ${b}`;
+    case 3: return `background:linear-gradient(${ang}deg, ${a} 0 50%, ${b} 50% 100%)`;
+    case 4: return `background:radial-gradient(${a} 26%, transparent 28%) 0 0/25% 25%, ${b}`;
+    default: return `background:radial-gradient(circle at ${x}% ${y}%, ${b} 0 9%, ${a} 9% 31%, transparent 31.5%), ${b}`;
+  }
+}
+
+/* ===== Datos de ejemplo para el modo demo ===== */
+const Mock = (() => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const SECCIONES = {
+    "Álbumes": ["Soda Stereo", "Nada personal", "Signos", "Doble vida", "Canción animal", "Dynamo", "Sueño Stereo"],
+    "En vivo": ["Ruido blanco", "Comfort y música para volar", "El último concierto", "Me verás volver"],
+    "Recopilaciones": ["Zona de promesas", "Obras cumbre", "Me verás volver (Hits & más)"],
+    "Singles": ["De música ligera", "Persiana americana", "Cuando pase el temblor", "En la ciudad de la furia"],
+  };
+  const KNOWN = {
+    "canción animal": {
+      fecha: "1990",
+      pistas: [
+        ["(En) el séptimo día", "4:30"], ["Un millón de años luz", "4:23"], ["Canción animal", "3:24"],
+        ["1990", "3:52"], ["Sueles dejarme solo", "4:46"], ["Entre caníbales", "4:14"],
+        ["Té para tres", "2:20"], ["Hombre al agua", "4:40"], ["Cae el sol", "3:36"], ["De música ligera", "3:32"],
+      ].map(([titulo, duracion], i) => ({ n: i + 1, titulo, duracion })),
+    },
+  };
+  function rnd(seed) { return () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296; }
+  function tracksFor(album) {
+    const k = (album || "").toLowerCase();
+    if (KNOWN[k]) return KNOWN[k];
+    const r = rnd(hash(album));
+    const single = Object.values(SECCIONES).at(-1).includes(album);
+    const n = single ? 1 + Math.floor(r() * 2) : 8 + Math.floor(r() * 5);
+    return {
+      fecha: String(1984 + Math.floor(r() * 24)),
+      pistas: Array.from({ length: n }, (_, i) => ({
+        n: i + 1, titulo: single && i === 0 ? album : `Pista ${i + 1}`,
+        duracion: `${2 + Math.floor(r() * 4)}:${String(Math.floor(r() * 60)).padStart(2, "0")}`,
+      })),
+    };
+  }
+  const jobs = [];
+  function addJob(artist, album, preset) {
+    const { pistas } = tracksFor(album);
+    const r = rnd(hash(album) + 7);
+    const tracks = pistas.map((p) => ({ title: p.titulo, size: Math.round(5e6 + r() * 7e6), got: 0, status: "pending" }));
+    const j = { artist, album, status: "queued", total: tracks.length, done: 0, received: 0,
+                size: tracks.reduce((a, t) => a + t.size, 0), tracks };
+    if (preset) preset(j);
+    jobs.push(j);
+  }
+  function finishTrack(j, t) { t.got = t.size; t.status = "done"; t.file = `${j.artist} - ${t.title}.mp3`; j.done++; }
+  addJob("Soda Stereo", "Signos", (j) => { j.tracks.forEach((t) => finishTrack(j, t)); j.status = "completed"; });
+  addJob("Soda Stereo", "Doble vida", (j) => { j.status = "running"; j.tracks.slice(0, 3).forEach((t) => finishTrack(j, t)); });
+  function tick() {
+    for (const j of jobs) {
+      if (j.status === "queued") { j.status = "running"; continue; }
+      if (j.status !== "running") continue;
+      const t = j.tracks.find((t) => t.status !== "done");
+      if (!t) { j.status = "completed"; continue; }
+      t.status = "downloading";
+      t.got = Math.min(t.size, t.got + 700000 + Math.random() * 1200000);
+      if (t.got >= t.size) finishTrack(j, t);
+    }
+    for (const j of jobs) j.received = j.tracks.reduce((a, t) => a + t.got, 0);
+  }
+  setInterval(tick, 500);
+  const pub = (j) => ({
+    artist: j.artist, album: j.album, status: j.status, total: j.total, done: j.done,
+    received: Math.round(j.tracks.reduce((a, t) => a + t.got, 0)), size: j.size,
+    tracks: j.tracks.map((t) => ({ title: t.title, status: t.status, file: t.file || null,
+                                   size: t.status === "done" ? t.size : 0 })),
+  });
+  return {
+    async get(url) {
+      const u = new URL(url, "http://demo");
+      const p = u.searchParams;
+      if (u.pathname === "/api/jobs") return jobs.map(pub).reverse();
+      await wait(300 + Math.random() * 400);
+      if (u.pathname === "/api/config") return { bot: "deezload_bot", downloads_dir: "D:\\musica\\descargas" };
+      if (u.pathname === "/api/albums")
+        return { artista: "Soda Stereo", total: Object.values(SECCIONES).flat().length, secciones: SECCIONES };
+      if (u.pathname === "/api/tracks") return tracksFor(p.get("album"));
+      throw new Error("Ruta no encontrada");
+    },
+    async post(url, body) {
+      await wait(400);
+      addJob(body.artist, body.album);
+      return { ok: true };
+    },
+  };
+})();
+
+
+const state = { artist: "", album: null, jobOpen: new Map() };
+
+function introHTML() {
+  const arts = ["Signos", "Dynamo", "Doble vida"].map((t) => `<span class="art" style="${sleeveStyle(t)}"></span>`).join("");
+  return `<div class="intro"><div class="fan" aria-hidden="true">${arts}</div>
+    <div><h1>Busca un artista para revisar su discografía</h1>
+    <p>Sus álbumes aparecen agrupados por tipo. Abre uno para ver las pistas y descargarlo completo.</p></div></div>`;
+}
+
+async function loadConfig() {
+  try {
+    const c = await API.config();
+    $("#cfg").innerHTML = `<b>@${esc(c.bot)}</b><span title="${escAttr(c.downloads_dir)}">Guarda en ${esc(c.downloads_dir)}</span>`;
+  } catch (e) {
+    $("#cfg").classList.add("off");
+    $("#cfg").innerHTML = `<b>Sin conexión</b><span>Revisa que el servidor esté activo</span>`;
+  }
+}
+
+async function search(ev) {
+  ev?.preventDefault();
+  const artist = $("#artist").value.trim();
+  if (!artist) { $("#artist").focus(); return; }
+  state.artist = artist; state.album = null;
+  $("#go").disabled = true;
+  $("#crate").innerHTML = `<p class="loading"><span class="spin"></span>Buscando «${esc(artist)}»…</p>`;
+  try {
+    renderAlbums(await API.albums(artist));
+  } catch (e) {
+    $("#crate").innerHTML = `<p class="error">No se pudo buscar «${esc(artist)}»: ${esc(e.message)}</p>`;
+  } finally { $("#go").disabled = false; }
+}
+
+function renderAlbums(data) {
+  if (data.error) { $("#crate").innerHTML = `<p class="error">${esc(data.error)}</p>`; return; }
+  const sections = data.secciones || {};
+  let html = `<div class="artist-head"><h1>${esc(data.artista || state.artist)}</h1>
+              <p>${plural(data.total ?? 0, "álbum", "álbumes")}</p></div>`;
+  for (const [sec, albums] of Object.entries(sections)) {
+    html += `<section class="shelf"><h2>${esc(sec)} <span>${albums.length}</span></h2><div class="bin">`;
+    for (const a of albums) {
+      html += `<button class="sleeve" data-album="${escAttr(a)}" aria-expanded="false">
+                 <span class="art" style="${sleeveStyle(a)}"></span><span class="name">${esc(a)}</span></button>`;
+    }
+    html += `</div></section>`;
+  }
+  if (!Object.keys(sections).length) html += `<p class="q-empty">No encontramos álbumes para este artista. Prueba con otra forma del nombre.</p>`;
+  $("#crate").innerHTML = html;
+  $$(".sleeve", $("#crate")).forEach((el) => (el.onclick = () => toggleAlbum(el)));
+}
+
+/* Inserta el detalle al final de la fila donde está el disco elegido. */
+function placeDetail(detail, el) {
+  detail.remove();
+  let last = el;
+  for (let n = el.nextElementSibling; n && n.offsetTop === el.offsetTop; n = n.nextElementSibling) last = n;
+  last.after(detail);
+}
+
+function closeDetail() {
+  $("#detail")?.remove();
+  $$(".sleeve[aria-expanded=true]").forEach((s) => s.setAttribute("aria-expanded", "false"));
+  state.album = null;
+}
+
+async function toggleAlbum(el) {
+  const album = el.dataset.album;
+  if (state.album === album) { closeDetail(); el.focus(); return; }
+  closeDetail();
+  state.album = album;
+  el.setAttribute("aria-expanded", "true");
+  const d = document.createElement("div");
+  d.className = "detail"; d.id = "detail";
+  d.innerHTML = `<span class="big art" style="${sleeveStyle(album)}"></span>
+    <div class="body"><h3>${esc(album)}</h3><p class="loading"><span class="spin"></span>Cargando pistas…</p></div>
+    <button class="close" aria-label="Cerrar álbum">×</button>`;
+  placeDetail(d, el);
+  d.querySelector(".close").onclick = () => { closeDetail(); el.focus(); };
+  d.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  try {
+    const data = await API.tracks(state.artist, album);
+    if (state.album === album) renderTracks(d, album, data);
+  } catch (e) {
+    if (state.album === album) d.querySelector(".body").innerHTML =
+      `<h3>${esc(album)}</h3><p class="error">No se pudieron cargar las pistas: ${esc(e.message)}</p>`;
+  }
+}
+
+function renderTracks(d, album, data) {
+  const tracks = data.pistas || [];
+  let html = `<h3>${esc(album)}</h3><div class="meta">${data.fecha ? `<span>${esc(data.fecha)}</span>` : ""}
+              <span>${plural(tracks.length, "pista", "pistas")}</span></div>`;
+  if (data.aviso) html += `<p class="aviso">${esc(data.aviso)}</p>`;
+  if (tracks.length) {
+    html += `<div class="actions"><button class="btn" id="dlBtn">Descargar álbum</button><span class="note" id="dlNote" role="status"></span></div>
+             <ol class="tracks">${tracks.map((t) => `<li><span class="n">${t.n}</span><span class="t">${esc(t.titulo)}</span>
+             <span class="d">${esc(t.duracion || "")}</span></li>`).join("")}</ol>`;
+  } else {
+    html += `<p class="aviso">Este lanzamiento no tiene pistas para listar. Suele pasar con singles que el bot no puede bajar como álbum completo.</p>`;
+  }
+  d.querySelector(".body").innerHTML = html;
+  const b = $("#dlBtn");
+  if (b) b.onclick = () => startDownload(album, b);
+}
+
+async function startDownload(album, btn) {
+  const note = $("#dlNote");
+  btn.disabled = true; btn.textContent = "Añadiendo…"; note.className = "note"; note.textContent = "";
+  try {
+    await API.download(state.artist, album);
+    note.textContent = "Añadido a descargas";
+    refreshJobs();
+  } catch (e) {
+    note.className = "note err"; note.textContent = `No se pudo descargar: ${e.message}`;
+  } finally { btn.disabled = false; btn.textContent = "Descargar álbum"; }
+}
+
+function renderJobs(jobs) {
+  const active = jobs.filter((j) => j.status === "running" || j.status === "queued").length;
+  $("#qCount").textContent = active ? `${active} en curso` : "";
+  if (!jobs.length) { $("#jobsBox").innerHTML = `<p class="q-empty">Cuando descargues un álbum, verás aquí su avance.</p>`; return; }
+  $("#jobsBox").innerHTML = jobs.map((j) => {
+    const key = jobKey(j);
+    const open = state.jobOpen.has(key) ? state.jobOpen.get(key) : j.status === "running";
+    const files = (j.tracks || []).map((t) => {
+      const right = t.file
+        ? `${t.size ? `<span>${fmtBytes(t.size)}</span>` : ""}<a href="/files/${encodeURIComponent(t.file)}" download>Guardar</a>`
+        : t.status === "downloading" ? `<span class="now">bajando…</span>` : "";
+      return `<li><span class="t">${esc(t.title)}</span><span class="r">${right}</span></li>`;
+    }).join("");
+    return `<article class="job st-${escAttr(j.status)}">
+      <div class="j-head"><span class="art" style="${sleeveStyle(j.album)}"></span>
+        <div class="j-title"><b>${esc(j.album)}</b><span>${esc(j.artist)}</span></div>
+        <span class="badge">${label(j.status)}</span></div>
+      ${j.status === "error" ? `<p class="j-err">${esc(j.error || "La descarga falló.")}</p>` : ""}
+      <div class="meter"><i style="width:${jobPct(j)}%"></i></div>
+      <div class="j-stats"><span>${j.done} de ${j.total} pistas</span><span>${fmtBytes(j.received)} de ${fmtBytes(j.size)}</span></div>
+      ${files ? `<details data-key="${escAttr(key)}" ${open ? "open" : ""}><summary>Archivos</summary><ul class="files">${files}</ul></details>` : ""}
+    </article>`;
+  }).join("");
+  $$("#jobsBox details").forEach((det) =>
+    det.addEventListener("toggle", () => state.jobOpen.set(det.dataset.key, det.open)));
+}
+
+let resizeT;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => {
+    const d = $("#detail"), el = $(".sleeve[aria-expanded=true]");
+    if (d && el) placeDetail(d, el);
+  }, 120);
+});
+
+$("#searchForm").addEventListener("submit", search);
+$("#crate").innerHTML = introHTML();
+if (DEMO) $("#demoBar").hidden = false;
+loadConfig();
+const refreshJobs = pollJobs(renderJobs);
+</script>
+</body>
+</html>

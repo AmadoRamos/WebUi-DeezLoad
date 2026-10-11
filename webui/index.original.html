@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>deezload</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel2: #1e222b; --line: #2a2f3a;
+    --txt: #e6e9ef; --muted: #98a1b3; --accent: #6ea8fe; --accent2: #4f8cff;
+    --ok: #46d19a; --err: #ff6b6b; --warn: #f5c451;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--txt);
+         font: 14px/1.5 system-ui, Segoe UI, Roboto, sans-serif; }
+  header { padding: 16px 22px; border-bottom: 1px solid var(--line);
+           display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+           position: sticky; top: 0; background: rgba(15,17,21,.92);
+           backdrop-filter: blur(6px); z-index: 5; }
+  header h1 { font-size: 18px; margin: 0; letter-spacing: .3px; }
+  header .tag { color: var(--muted); font-size: 12px; }
+  .wrap { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr);
+          gap: 20px; padding: 20px; align-items: start; }
+  @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line);
+           border-radius: 12px; padding: 16px; }
+  .panel h2 { font-size: 14px; margin: 0 0 12px; color: var(--muted);
+              text-transform: uppercase; letter-spacing: .6px; }
+  .search { display: flex; gap: 8px; }
+  input[type=text] { flex: 1; background: var(--panel2); color: var(--txt);
+          border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px;
+          font-size: 14px; outline: none; }
+  input[type=text]:focus { border-color: var(--accent2); }
+  button { background: var(--accent2); color: #fff; border: 0; border-radius: 9px;
+           padding: 10px 14px; font-size: 14px; cursor: pointer; white-space: nowrap; }
+  button:hover { filter: brightness(1.1); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--txt); }
+  button.sm { padding: 6px 10px; font-size: 12.5px; border-radius: 8px; }
+  .muted { color: var(--muted); }
+  .err { color: var(--err); }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line);
+             border-top-color: var(--accent); border-radius: 50%;
+             animation: spin .8s linear infinite; vertical-align: -2px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .artist { display: flex; justify-content: space-between; align-items: baseline;
+            gap: 10px; margin: 14px 0 10px; padding-bottom: 10px;
+            border-bottom: 1px solid var(--line); }
+  .artist b { font-size: 15px; white-space: pre-line; }
+  .section-title { margin: 16px 0 8px; color: var(--accent); font-weight: 600;
+                   font-size: 13px; text-transform: uppercase; letter-spacing: .5px; }
+  .albums { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px;
+          padding: 8px 10px; cursor: pointer; font-size: 13px; }
+  .chip:hover { border-color: var(--accent2); color: var(--accent); }
+  .chip.active { border-color: var(--accent2); background: #22314f; }
+  .tracks { list-style: none; padding: 0; margin: 10px 0 0; }
+  .tracks li { display: flex; gap: 10px; padding: 7px 4px; border-bottom: 1px solid var(--line);
+               font-size: 13px; }
+  .tracks li .n { color: var(--muted); width: 26px; text-align: right; flex: none; }
+  .tracks li .dur { color: var(--muted); flex: none; }
+  .tracks li .t { flex: 1; min-width: 0; }
+  .job { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px;
+         padding: 12px; margin-bottom: 12px; }
+  .job .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .job .name { font-weight: 600; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--line); }
+  .badge.running { color: var(--warn); border-color: var(--warn); }
+  .badge.completed { color: var(--ok); border-color: var(--ok); }
+  .badge.error { color: var(--err); border-color: var(--err); }
+  .badge.queued { color: var(--muted); }
+  .bar { height: 6px; background: #0c0e12; border-radius: 4px; overflow: hidden; margin: 10px 0; }
+  .bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent2), var(--ok));
+             width: 0; transition: width .3s; }
+  .file { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px;
+          padding: 4px 0; color: var(--muted); }
+  .file a { color: var(--accent); text-decoration: none; }
+  .file a:hover { text-decoration: underline; }
+  .file .ok { color: var(--ok); }
+  .empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>deezload</h1>
+  <span class="tag" id="cfg">cargando…</span>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <h2>Explorar</h2>
+    <div class="search">
+      <input type="text" id="artist" placeholder="Nombre del artista (p. ej. Soda Stereo)" />
+      <button id="go">Buscar</button>
+    </div>
+    <div id="albumsBox"></div>
+
+    <div id="tracksBox"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Descargas</h2>
+    <div id="jobsBox"><div class="empty">Sin descargas todavía.</div></div>
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let state = { artist: "", index: 0, album: null };
+
+function fmtBytes(n) {
+  if (!n) return "0 B";
+  const u = ["B", "KB", "MB", "GB"]; let i = 0;
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return n.toFixed(n >= 10 || i === 0 ? 0 : 1) + " " + u[i];
+}
+
+async function jget(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
+  return r.json();
+}
+
+async function loadConfig() {
+  try {
+    const c = await jget("/api/config");
+    $("#cfg").textContent = `@${c.bot} · guardando en ${c.downloads_dir}`;
+  } catch (e) { $("#cfg").textContent = ""; }
+}
+
+async function search() {
+  const artist = $("#artist").value.trim();
+  if (!artist) return;
+  state.artist = artist; state.album = null;
+  $("#go").disabled = true;
+  $("#albumsBox").innerHTML = `<p class="muted"><span class="spinner"></span> Buscando "${artist}"…</p>`;
+  $("#tracksBox").innerHTML = "";
+  try {
+    const data = await jget(`/api/albums?artist=${encodeURIComponent(artist)}&index=0`);
+    renderAlbums(data);
+  } catch (e) {
+    $("#albumsBox").innerHTML = `<p class="err">Error: ${e.message}</p>`;
+  } finally { $("#go").disabled = false; }
+}
+
+function renderAlbums(data) {
+  if (data.error) { $("#albumsBox").innerHTML = `<p class="err">${data.error}</p>`; return; }
+  let html = `<div class="artist"><b>${esc(data.artista || state.artist)}</b>
+              <span class="muted">${data.total ?? 0} álbumes</span></div>`;
+  const sections = data.secciones || {};
+  for (const [sec, albums] of Object.entries(sections)) {
+    html += `<div class="section-title">${esc(sec)}</div><div class="albums">`;
+    for (const a of albums) {
+      html += `<div class="chip" data-album="${escAttr(a)}">${esc(a)}</div>`;
+    }
+    html += `</div>`;
+  }
+  if (!Object.keys(sections).length) html += `<p class="empty">Sin álbumes.</p>`;
+  $("#albumsBox").innerHTML = html;
+  $("#albumsBox").querySelectorAll(".chip").forEach((el) => {
+    el.onclick = () => openAlbum(el.dataset.album, el);
+  });
+}
+
+async function openAlbum(album, el) {
+  $("#albumsBox").querySelectorAll(".chip").forEach((c) => c.classList.remove("active"));
+  el.classList.add("active");
+  state.album = album;
+  $("#tracksBox").innerHTML = `<p class="muted"><span class="spinner"></span> Abriendo "${esc(album)}"…</p>`;
+  try {
+    const data = await jget(`/api/tracks?artist=${encodeURIComponent(state.artist)}&album=${encodeURIComponent(album)}&index=0`);
+    renderTracks(album, data);
+  } catch (e) {
+    $("#tracksBox").innerHTML = `<p class="err">Error: ${e.message}</p>`;
+  }
+}
+
+function renderTracks(album, data) {
+  const tracks = data.pistas || [];
+  let html = `<div class="artist"><b>${esc(album)}</b>
+              <span class="muted">${data.fecha ? data.fecha + " · " : ""}${tracks.length} pistas</span></div>`;
+  if (data.aviso) html += `<p class="muted">${esc(data.aviso)}</p>`;
+  if (tracks.length) {
+    html += `<ul class="tracks">`;
+    for (const t of tracks) {
+      html += `<li><span class="n">${t.n}</span><span class="t">${esc(t.titulo)}</span>
+               <span class="dur">${esc(t.duracion || "")}</span></li>`;
+    }
+    html += `</ul>`;
+    html += `<div style="margin-top:12px"><button id="dlBtn">Descargar álbum (GET ALL)</button></div>`;
+  } else {
+    html += `<p class="empty">Este álbum no tiene pistas listables (quizá sea un single sin GET ALL).</p>`;
+  }
+  $("#tracksBox").innerHTML = html;
+  const b = $("#dlBtn");
+  if (b) b.onclick = startDownload;
+}
+
+async function startDownload() {
+  if (!state.album) return;
+  const btn = $("#dlBtn");
+  btn.disabled = true; btn.textContent = "Iniciando…";
+  try {
+    const r = await fetch("/api/download", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ artist: state.artist, album: state.album, index: 0 }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
+    await refreshJobs();
+  } catch (e) {
+    alert("Error al iniciar la descarga: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = "Descargar álbum (GET ALL)";
+  }
+}
+
+async function refreshJobs() {
+  try {
+    const jobs = await jget("/api/jobs");
+    renderJobs(jobs);
+  } catch (e) { /* silencioso */ }
+}
+
+function renderJobs(jobs) {
+  if (!jobs.length) { $("#jobsBox").innerHTML = `<div class="empty">Sin descargas todavía.</div>`; return; }
+  let html = "";
+  for (const j of jobs) {
+    const pct = j.size ? Math.round((j.received / j.size) * 100) : (j.status === "completed" ? 100 : 0);
+    html += `<div class="job">
+      <div class="top">
+        <span class="name">${esc(j.album)} <span class="muted">— ${esc(j.artist)}</span></span>
+        <span class="badge ${j.status}">${label(j.status)}</span>
+      </div>`;
+    if (j.status === "error") html += `<p class="err" style="margin:6px 0 0">${esc(j.error || "Error")}</p>`;
+    html += `<div class="bar"><i style="width:${pct}%"></i></div>
+      <div class="muted" style="font-size:12px">${j.done}/${j.total} pistas · ${fmtBytes(j.received)} de ${fmtBytes(j.size)}</div>`;
+    if (j.tracks && j.tracks.length) {
+      html += `<div style="margin-top:8px">`;
+      for (const t of j.tracks) {
+        const f = t.file
+          ? `<a href="/files/${encodeURIComponent(t.file)}" download>guardar</a>`
+          : `<span class="muted">${t.status === "downloading" ? "…" : ""}</span>`;
+        html += `<div class="file"><span class="t">${esc(t.title)}</span>
+                 <span>${t.size ? fmtBytes(t.size) : ""} ${f}</span></div>`;
+      }
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+  $("#jobsBox").innerHTML = html;
+}
+
+function label(s) {
+  return { queued: "en cola", running: "descargando", completed: "completado", error: "error" }[s] || s;
+}
+function esc(s) { return (s ?? "").toString()
+  .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;"); }
+function escAttr(s) { return esc(s).replaceAll('"', "&quot;"); }
+
+$("#go").onclick = search;
+$("#artist").addEventListener("keydown", (e) => { if (e.key === "Enter") search(); });
+
+loadConfig();
+refreshJobs();
+setInterval(() => { if (document.visibilityState === "visible") refreshJobs(); }, 1500);
+</script>
+</body>
+</html>

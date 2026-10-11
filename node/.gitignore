@@ -1,0 +1,5 @@
+node_modules/
+*.session
+albums_node.json
+albums_python.json
+logs/
