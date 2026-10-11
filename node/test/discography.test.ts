@@ -9,7 +9,7 @@ import { Downloader, Mutex, type DownloadJob, type GetAudios } from "../src/down
 import type { Msg, Transport } from "../src/types.js";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-let events: [string, string][], calls: number, emptyOnce: Set<string>, loseList: Set<string>;
+let events: [string, string][], calls: number, emptyOnce: Set<string>, loseList: Set<string>, direct: Set<string>;
 let dl: Downloader, dir: string, turn: Mutex;
 
 const files = {
@@ -18,6 +18,11 @@ const files = {
 
 const bot: DiscBot = {
   albums: (async () => { calls++; await sleep(10); return { list_message_id: 1 }; }) as never,
+  albumCardDirect: async (artist: string, title: string) => {
+    if (!direct.has(title)) return null;
+    events.push(["abre", title]); events.push(["directo", `${artist}|${title}`]);
+    return 200;
+  },
   albumCardInList: async (listId: number, title: string) => {
     if (loseList.has(title)) { loseList.delete(title); throw new Error("No hay botón que coincida"); }
     events.push(["abre", title]);
@@ -33,7 +38,7 @@ const bot: DiscBot = {
 };
 
 beforeEach(() => {
-  events = []; calls = 0; emptyOnce = new Set(); loseList = new Set(); turn = new Mutex();
+  events = []; calls = 0; emptyOnce = new Set(); loseList = new Set(); direct = new Set(); turn = new Mutex();
   dir = join(mkdtempSync(join(tmpdir(), "disc-")), "dl");
   dl = new Downloader(files, bot as never, dir, join(dir, "..", "ajustes.json"));
   const run = dl.runJob.bind(dl);
@@ -137,4 +142,14 @@ it("queuedKeys: lo pendiente, sin tildes ni etiquetas; nada al terminar", async 
   assert.ok(d.queuedKeys().has("artista|nandu"));
   await done;
   assert.equal(d.queuedKeys().size, 0);
+});
+
+it("búsqueda directa primero, con el nombre del bot; la lista solo para los que no se encuentran", async () => {
+  ["D1", "D3"].forEach((t) => direct.add(t));
+  const d = new Discography("artista mal escrito", "Artista", 0, ["D1", "D2", "D3"].map((title) => ({ title, section: "Albums" })),
+                            { bot, downloader: dl, turn, pauseSeconds: 0, notify: () => {} });
+  await d.run();
+  assert.deepEqual(events.filter((e) => e[0] === "directo").map((e) => e[1]), ["Artista|D1", "Artista|D3"]);
+  assert.equal(calls, 1);   // la lista se abrió solo para D2
+  assert.ok(d.albums.every((a) => a.status === "completed"));
 });

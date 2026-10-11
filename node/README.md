@@ -37,13 +37,16 @@ modo inline del bot (sin el prefijo `.art`), que además de canciones devuelve �
   canciones y «Descargar álbum». «Ver todos sus álbumes» carga la lista completa como antes.
   Si dejas el álbum vacío, todo funciona como siempre.
 - **Sin cambiar nada**: abrir un álbum desde la lista o descargarlo también usa la búsqueda
-  directa (`/api/tracks`, `/api/download`, `npm run cli -- tracks` y `download`).
+  directa (`/api/tracks`, `/api/download`, `npm run cli -- tracks` y `download`). En la web usa el
+  nombre del artista que da el bot, aunque lo hayas escrito distinto.
+- **Discografías**: cada álbum se abre con la búsqueda directa (sin BACK ni pasar páginas); la
+  lista de álbumes solo se abre para los que no se encuentran así.
 - **Cuándo se usa**: solo si hay un único álbum con ese título y ese artista. Primero busca el
   título exacto; si no lo hay, sin distinguir tildes («exitos» → «Éxitos»). Los símbolos sí
   cuentan («Imparable 🅴» no es «Imparable»).
 - **Si no sirve** (el nombre del artista no coincide, hay dos álbumes iguales, el título viene
   recortado, el bot abre otra cosa…), se usa la lista de álbumes de siempre: funciona, pero tarda
-  lo de antes. Las discografías siempre usan la lista.
+  lo de antes.
 - Si eliges otro artista con el mismo nombre (`n` > 0 en la línea de comandos), se usa la lista:
   la búsqueda directa no sabe distinguirlos.
 
@@ -110,7 +113,7 @@ Si el bot no reacciona ni insistiendo, el error sale en menos de un minuto (3 pu
 npm test
 ```
 
-174 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
+176 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
 nombres engañosos ("Quiero Más", "Back in Black"), discografía con BACK, espera tras GET ALL,
 traducción de mensajes de GramJS y las peticiones que se envían a Telegram.
 Fase 2: descargas en secuencia y hasta 5 a la vez (con cambio en caliente y orden por álbum),

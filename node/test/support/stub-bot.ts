@@ -35,6 +35,7 @@ export class StubBot {
     this.cards.set(id, title);
     return [id, listId, null];
   }
+  async albumCardDirect(_artist: string, _album: string): Promise<number | null> { return null; }  // usa la lista
   async backToList(_card: number, listId: number) { report("Volviendo a la lista de álbumes"); await this.wait(0.2); return listId; }
   async albumCardId(artist: string, album: string, _index = 0): Promise<[number | null, Record<string, unknown> | null]> {
     await this.listing(artist);

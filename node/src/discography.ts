@@ -11,7 +11,7 @@ import * as songs from "./songs.js";
 import type { Msg } from "./types.js";
 
 /** Lo que la discografía necesita del bot (en las pruebas se usa un doble). */
-export type DiscBot = Pick<Bot, "albums" | "albumCardInList" | "backToList" | "collectGetAll">;
+export type DiscBot = Pick<Bot, "albums" | "albumCardDirect" | "albumCardInList" | "backToList" | "collectGetAll">;
 
 export interface DiscAlbum {
   title: string; section: string;
@@ -75,6 +75,10 @@ export class Discography {
   /** Pide las pistas usando la lista de álbumes ya abierta: abrir el álbum, GET ALL y volver. */
   private audios = async (job: DownloadJob): Promise<Msg[]> => {
     const { bot } = this.ctx;
+    // Primero la búsqueda directa (sin BACK ni páginas), con el nombre del artista que dio el bot.
+    // Si no sirve, la lista de siempre (se abre solo cuando hace falta).
+    const direct = this.index ? null : await bot.albumCardDirect(this.name, job.album);
+    if (direct !== null) return bot.collectGetAll(direct);
     if (this.listId === null) {
       const listing = await bot.albums(this.artist, this.index) as { list_message_id?: number; error?: string };
       if (listing.list_message_id === undefined) throw new Error(listing.error || "El bot no mostró la lista de álbumes.");

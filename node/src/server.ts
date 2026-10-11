@@ -16,7 +16,7 @@ import { DownloadJob, Downloader, MAX_PARALLEL, Mutex } from "./downloads.js";
 import * as songs from "./songs.js";
 import type { Transport } from "./types.js";
 
-export type BotApi = Pick<Bot, "albums" | "albumTracks" | "albumCardId" | "albumCardInList" | "backToList" | "collectGetAll">;
+export type BotApi = Pick<Bot, "albums" | "albumTracks" | "albumCardId" | "albumCardDirect" | "albumCardInList" | "backToList" | "collectGetAll">;
 
 export interface AppOptions {
   transport: Transport;       // para bajar los archivos

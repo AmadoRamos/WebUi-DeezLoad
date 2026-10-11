@@ -712,9 +712,8 @@ export class Bot {
   // ------------------------------------------------------------ Para descargar ---
   /** Abre un álbum desde la lista del artista y devuelve el id de la ficha con 'GET ALL'. */
   async albumCardId(artist: string, album: string, index = 0): Promise<[number | null, Record<string, unknown> | null]> {
-    const direct = index ? null : await this.albumDirect(artist, album);
-    const directCard = direct && [...direct].reverse().find((m) => hasGetAll(m) && screenOf(m) === "album");
-    if (directCard) return [directCard.message_id, null];
+    const directCard = index ? null : await this.albumCardDirect(artist, album);
+    if (directCard !== null) return [directCard, null];
     try {
       return await this.withRetries(async () => {
         const listing = await this.albumsOnce(artist, index);
@@ -727,6 +726,13 @@ export class Bot {
       if (e instanceof BotFlowError) return [null, { album, error: e.message }];
       throw e;
     }
+  }
+
+  /** Abre el álbum con la búsqueda directa y devuelve el id de la ficha con 'GET ALL', o null
+   *  si no sirvió (quien llama usa la lista). */
+  async albumCardDirect(artist: string, album: string): Promise<number | null> {
+    const direct = await this.albumDirect(artist, album);
+    return direct?.reverse().find((m) => hasGetAll(m) && screenOf(m) === "album")?.message_id ?? null;
   }
 
   /** Discografía: abre `title` desde una lista ya abierta. Devuelve [ficha | null, lista, error | null]. */
