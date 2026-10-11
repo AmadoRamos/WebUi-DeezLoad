@@ -23,6 +23,9 @@ node/albums_python.json
 albums_*.json
 node/probar_alb.bat
 
+# Configuración local de Claude Code
+.claude/
+
 # Sistema
 Thumbs.db
 desktop.ini
