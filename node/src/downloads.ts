@@ -18,12 +18,20 @@ import type { DocInfo, Msg, Transport } from "./types.js";
 export const MAX_PARALLEL = 5;
 
 // ------------------------------------------------------------------ Ajustes ---
-export interface Settings { descargas_simultaneas: number }
+/** Con qué versión quedarse si una canción tiene versión explícita y limpia
+ *  ("cualquiera": la que ya tengas, sin volver a bajarla). */
+export const VERSIONS = ["cualquiera", "explicita", "limpia"] as const;
+export type Version = (typeof VERSIONS)[number];
+export interface Settings { descargas_simultaneas: number; version: Version }
 
 export function loadSettings(file: string): Settings {
-  let n: unknown = 1;
-  try { n = JSON.parse(readFileSync(file, "utf8")).descargas_simultaneas; } catch { /* no existe o está dañado */ }
-  return { descargas_simultaneas: Number.isInteger(n) && (n as number) >= 1 && (n as number) <= MAX_PARALLEL ? (n as number) : 1 };
+  let data: { descargas_simultaneas?: unknown; version?: unknown } = {};
+  try { data = JSON.parse(readFileSync(file, "utf8")); } catch { /* no existe o está dañado */ }
+  const n = data.descargas_simultaneas;
+  return {
+    descargas_simultaneas: Number.isInteger(n) && (n as number) >= 1 && (n as number) <= MAX_PARALLEL ? (n as number) : 1,
+    version: VERSIONS.includes(data.version as Version) ? (data.version as Version) : "cualquiera",
+  };
 }
 
 export function saveSettings(file: string, s: Settings): void {
@@ -131,6 +139,8 @@ export class DownloadJob {
   finished: number | null = null;
   step: string | null = null;   // paso actual mientras se preparan las pistas
   attempts = 1;
+  /** Versión del álbum por su nombre: true explícito (🅴), false limpio, null sin saber. */
+  albumVersion: boolean | null = null;
   discography: string | null = null;
   /** name: el nombre del artista que dio el bot (para la búsqueda directa), si se conoce. */
   constructor(public artist: string, public album: string, public index = 0, public name?: string) {}
@@ -157,6 +167,14 @@ export class DownloadJob {
       tracks: this.tracks,
     };
   }
+}
+
+/** Versión de un álbum por su nombre: la lista de álbumes del bot marca los explícitos con 🅴
+ *  («STANS (The Official Soundtrack) 🅴»). Con 🅴, explícito; sin 🅴 y con el nombre sacado de esa
+ *  lista, limpio (un álbum no explícito no tiene canciones explícitas); si no, null: la búsqueda
+ *  directa del bot no marca la versión. */
+export function versionOfAlbum(title: string, fromList: boolean): boolean | null {
+  return /🅴/u.test(title) ? true : fromList ? false : null;
 }
 
 export type GetAudios = (job: DownloadJob) => Promise<Msg[]>;
@@ -202,11 +220,42 @@ export class Downloader {
     return {};
   }
 
+  /** Cambia con qué versión quedarse (explícita / limpia / cualquiera). */
+  setVersion(v: Version): { aviso?: string } {
+    if (!VERSIONS.includes(v)) throw new RangeError(`Elige una de: ${VERSIONS.join(", ")}.`);
+    this.settings.version = v;
+    this.notify();
+    try { saveSettings(this.settingsFile, this.settings); }
+    catch (e) { return { aviso: `Se aplicó, pero no se pudo guardar en ajustes.json: ${(e as Error).message}` }; }
+    return {};
+  }
+
+  /** true explícita / false limpia / null cualquiera: la versión que se quiere. */
+  private wanted(): boolean | null {
+    return this.settings.version === "explicita" ? true : this.settings.version === "limpia" ? false : null;
+  }
+
+  /** ¿Vale el archivo `file` de la carpeta con la versión que se quiere? Si no se sabe su
+   *  versión (no es FLAC o no tiene la etiqueta), sí: nunca se sustituye a ciegas. */
+  keeps(file: string): boolean {
+    const want = this.wanted();
+    if (want === null) return true;
+    const got = songs.explicitOf(join(this.downloadsDir, file));
+    return got === null || got === want;
+  }
+
+  /** ¿Cuenta como "ya la tienes" en un álbum de versión `albumVersion` (ver versionOfAlbum)? Si
+   *  el álbum es de la otra versión, no puede traer la que quieres: la que tienes vale. */
+  counts(file: string, albumVersion: boolean | null): boolean {
+    const want = this.wanted();
+    return this.keeps(file) || (want !== null && albumVersion !== null && albumVersion !== want);
+  }
+
   /** Pide las pistas de un álbum suelto: busca al artista, abre el álbum y pide las pistas. */
   private singleAudios: GetAudios = async (job) => {
     const [card, error] = await this.bot.albumCardId(job.artist, job.album, job.index, job.name);
     if (card === null) throw new Error(String((error as { error?: string })?.error || "No se encontró el álbum en el bot."));
-    return this.cardAudios(card);
+    return this.cardAudios(card, job.albumVersion);
   };
 
   /** Pistas del álbum de la ficha `card`. Si ya tienes algunas (descarga parcial) y faltan como
@@ -214,10 +263,14 @@ export class Downloader {
    *  solo las que faltan en lugar de GET ALL, y las que tienes ni se piden (salen como "ya
    *  estaba"); si las tienes todas, no se pide nada. Si no se puede (la ficha no muestra todas las
    *  canciones, una no se encuentra…), GET ALL como siempre: lo que ya está se salta al bajar. */
-  async cardAudios(card: number): Promise<Msg[]> {
+  async cardAudios(card: number, albumVersion: boolean | null = null): Promise<Msg[]> {
     const info = await this.bot.cardTracks(card);
     const index = songs.folderIndex(this.downloadsDir);
-    const have = info?.pistas.map((p) => songs.find(index, p.titulo, [p.artista, info.artista])) ?? [];
+    // Solo cuenta como "ya la tienes" si es la versión que se quiere (explícita / limpia)
+    const have = info?.pistas.map((p) => {
+      const f = songs.find(index, p.titulo, [p.artista, info.artista], (n) => this.keeps(n));
+      return f && this.counts(f, albumVersion) ? f : null;
+    }) ?? [];
     const missing = have.filter((h) => !h).length;
     if (info && have.some(Boolean) && missing > this.oneByOneMax)
       report(`Faltan ${missing} canciones (más de ${this.oneByOneMax}): pidiendo el álbum completo (GET ALL)`);
@@ -240,9 +293,10 @@ export class Downloader {
   }
 
   /** Crea y lanza la descarga de un álbum. */
-  start(artist: string, album: string, index = 0, getAudios?: GetAudios, name?: string): DownloadJob {
+  start(artist: string, album: string, index = 0, getAudios?: GetAudios, name?: string, albumVersion: boolean | null = null): DownloadJob {
     const job = new DownloadJob(artist.trim(), album.trim(), index, name?.trim() || undefined);
     job.getAudios = getAudios;
+    job.albumVersion = albumVersion;
     this.jobs.set(job.id, job);
     this.notify();
     void this.runJob(job, getAudios);
@@ -302,7 +356,7 @@ export class Downloader {
   /** Archivo de la carpeta que ya es esta canción, o null si hay que bajarla. */
   findExisting(info: Partial<DocInfo>, target: string): string | null {
     const [artist, title] = this.songOf(info, target);
-    const found = songs.find(songs.folderIndex(this.downloadsDir), title, [artist, info.performer]);
+    const found = songs.find(songs.folderIndex(this.downloadsDir), title, [artist, info.performer], (f) => this.keeps(f));
     if (found) return found;
     return existsSync(target) ? basename(target) : null;  // nombres sin el formato 'Artista - Título'
   }
@@ -320,11 +374,14 @@ export class Downloader {
       await this.fileLocks.get(key)!.run(async () => {
         let existing: string | null;
         try { existing = this.findExisting(info, target); } finally { checked(); }
-        if (existing) {
-          const size = statSync(join(this.downloadsDir, existing)).size;
-          Object.assign(track, { status: "exists", file: existing, path: join(this.downloadsDir, existing), size, progress: size });
-          return;
-        }
+        const markExisting = (file: string) => {
+          const size = statSync(join(this.downloadsDir, file)).size;
+          Object.assign(track, { status: "exists", file, path: join(this.downloadsDir, file), size, progress: size });
+        };
+        if (existing && this.counts(existing, job.albumVersion)) { markExisting(existing); return; }
+        // Sin la canción, o con la otra versión (explícita / limpia): se baja. Si ya tenías la otra
+        // versión, la que llega solo la sustituye si es la que quieres; si no, se descarta.
+        let saved = target;
         await this.slots.acquire([job.seq, i]);
         try {
           track.status = "downloading";
@@ -334,13 +391,16 @@ export class Downloader {
             if (total) track.size = total;
             this.notify();
           });
-          renameSync(part, target);
+          if (existing && songs.explicitOf(part) !== this.wanted()) saved = "";   // la misma versión que ya tenías
+          else if (existing) renameSync(part, (saved = join(this.downloadsDir, existing)));   // sobrescribe la otra versión
+          else renameSync(part, target);
         } finally {
           this.slots.release();
           if (existsSync(part)) { try { unlinkSync(part); } catch { /* descarga cortada: no dejar el temporal */ } }
         }
-        const size = statSync(target).size;
-        Object.assign(track, { status: "done", file: basename(target), path: target, size, progress: size });
+        if (!saved) { markExisting(existing!); return; }
+        const size = statSync(saved).size;
+        Object.assign(track, { status: "done", file: basename(saved), path: saved, size, progress: size });
       });
     } catch (e) {
       Object.assign(track, { status: "error", error: (e as Error).message || String(e), progress: 0 });

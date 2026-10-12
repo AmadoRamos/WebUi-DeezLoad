@@ -7,7 +7,7 @@
  *   Su Mirada Loco Loco  = Su Mirada (Loco, Loco)            (signos)
  * Lo que distingue una canción se conserva: "(Live)", "(Remix)"…
  */
-import { readdirSync } from "node:fs";
+import { closeSync, openSync, readdirSync, readSync } from "node:fs";
 import { extname, parse } from "node:path";
 
 const NEUTRAL =
@@ -60,10 +60,40 @@ export function folderIndex(folder: string): FolderIndex {
   return index;
 }
 
-/** Nombre del archivo de la carpeta que es la misma canción, o null. */
-export function find(index: FolderIndex, title: string | undefined | null, artists: (string | undefined | null)[]): string | null {
+/** Nombre del archivo de la carpeta que es la misma canción, o null. Si hay varios (p. ej. la
+ *  versión explícita y la limpia), el primero que cumpla `prefer`. */
+export function find(index: FolderIndex, title: string | undefined | null, artists: (string | undefined | null)[],
+                     prefer: (name: string) => boolean = () => true): string | null {
   const wanted = new Set(artists.filter(Boolean).map((a) => artistKey(a)));
   wanted.delete("");
-  for (const [artist, name] of index.get(titleKey(title)) || []) if (wanted.has(artist)) return name;
-  return null;
+  const names = (index.get(titleKey(title)) || []).filter(([artist]) => wanted.has(artist)).map(([, name]) => name);
+  return names.find(prefer) ?? names[0] ?? null;
+}
+
+/** Versión de un FLAC según su etiqueta ITUNESADVISORY (la escribe el bot): true explícita,
+ *  false limpia, null si no se sabe (no es FLAC, no tiene la etiqueta o no se puede leer).
+ *  Lee solo los bloques de metadatos del principio del archivo. */
+export function explicitOf(path: string): boolean | null {
+  let fd: number | undefined;
+  try {
+    fd = openSync(path, "r");
+    const read = (pos: number, len: number) => { const b = Buffer.alloc(len); return b.subarray(0, readSync(fd!, b, 0, len, pos)); };
+    if (read(0, 4).toString("latin1") !== "fLaC") return null;
+    for (let pos = 4, last = false; !last;) {
+      const h = read(pos, 4);
+      if (h.length < 4) return null;
+      last = (h[0] & 0x80) !== 0;
+      const len = h.readUIntBE(1, 3);
+      if ((h[0] & 0x7f) === 4) {   // VORBIS_COMMENT
+        const tag = /(?:^|\0)ITUNESADVISORY=(\d)/i.exec(read(pos + 4, len).toString("latin1").replace(/[\x01-\x1f]/g, "\0"));
+        return tag ? tag[1] === "1" : null;
+      }
+      pos += 4 + len;
+    }
+    return null;
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
 }

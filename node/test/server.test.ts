@@ -74,7 +74,11 @@ it("ajustes por SSE y archivo ajustes.json", async () => {
   await sleep(100);
   assert.equal((await post("/api/ajustes", { descargas_simultaneas: 3 })).status, 200);
   const { events } = await listening;
-  assert.deepEqual(events.find(([n, d]) => n === "cambios" && d.ajustes)?.[1].ajustes, { descargas_simultaneas: 3, maximo: 5 });
+  assert.deepEqual(events.find(([n, d]) => n === "cambios" && d.ajustes)?.[1].ajustes, { descargas_simultaneas: 3, version: "cualquiera", maximo: 5 });
+  // con qué versión quedarse: se guarda sin tocar las descargas simultáneas
+  assert.equal((await (await post("/api/ajustes", { version: "explicita" })).json()).version, "explicita");
+  assert.equal((await post("/api/ajustes", { version: "otra" })).status, 422);
+  assert.equal((await (await fetch(`${base}/api/ajustes`)).json()).descargas_simultaneas, 3);
 });
 
 it("álbum en la cola de una discografía: 409; otro artista con el mismo álbum: sí", async () => {

@@ -6,7 +6,7 @@
  */
 import { randomUUID } from "node:crypto";
 import type { Bot } from "./bot.js";
-import { DownloadJob, Mutex, type Downloader } from "./downloads.js";
+import { DownloadJob, Mutex, versionOfAlbum, type Downloader } from "./downloads.js";
 import * as songs from "./songs.js";
 import type { Msg } from "./types.js";
 
@@ -42,13 +42,22 @@ export class Discography {
   created = Date.now() / 1000;
   finished: number | null = null;
   note: string | null = null;     // p. ej. "Pausa entre álbumes"
+  /** Álbumes elegidos que no se bajan: la otra versión (explícita / limpia) de otro elegido. */
+  omitted: string[];
 
   constructor(
     public artist: string, public name: string, public index: number,
     albums: { title: string; section?: string }[],
     private ctx: { bot: DiscBot; downloader: Downloader; turn: Mutex; pauseSeconds: number; notify: () => void },
   ) {
-    this.albums = albums.map((a) => ({ title: a.title, section: a.section || "", status: "pending", job_id: null, error: null }));
+    // Si elegiste las dos versiones de un álbum («X 🅴» y «X») y prefieres una, solo esa.
+    const want = ctx.downloader.settings.version;
+    const base = (t: string) => t.replace(/\s*🅴\s*/gu, " ").trim().toLowerCase();
+    const twin = (t: string) => albums.some((o) => o.title !== t && base(o.title) === base(t));
+    const drop = (t: string) => want !== "cualquiera" && twin(t) && (want === "explicita") !== /🅴/u.test(t);
+    this.omitted = albums.filter((a) => drop(a.title)).map((a) => a.title);
+    this.albums = albums.filter((a) => !drop(a.title))
+      .map((a) => ({ title: a.title, section: a.section || "", status: "pending", job_id: null, error: null }));
   }
 
   toDict() {
@@ -59,7 +68,7 @@ export class Discography {
       pausando: !this.resume.isSet() && this.status === "running",
       created: this.created, finished: this.finished, current: this.current,
       nota: this.note, total: this.albums.length,
-      listos: count("completed"), ya_estaban: count("exists"), con_error: count("error"),
+      listos: count("completed"), ya_estaban: count("exists"), con_error: count("error"), omitidos: this.omitted,
       cancelados: count("canceled"), albums: this.albums,
     };
   }
@@ -79,7 +88,7 @@ export class Discography {
     // Si no sirve, la lista de siempre (se abre solo cuando hace falta).
     // (con index > 0 solo si el nombre vino del bot: el texto escrito no distingue al artista)
     const direct = this.index && this.name === this.artist ? null : await bot.albumCardDirect(this.name, job.album);
-    if (direct !== null) return this.ctx.downloader.cardAudios(direct);
+    if (direct !== null) return this.ctx.downloader.cardAudios(direct, job.albumVersion);
     if (this.listId === null) {
       const listing = await bot.albums(this.artist, this.index) as { list_message_id?: number; error?: string };
       if (listing.list_message_id === undefined) throw new Error(listing.error || "El bot no mostró la lista de álbumes.");
@@ -93,7 +102,7 @@ export class Discography {
       throw e;
     }
     if (card === null) throw new Error(error || "No se encontró el álbum en la lista.");
-    const audios = await this.ctx.downloader.cardAudios(card);   // GET ALL, o una a una las que faltan
+    const audios = await this.ctx.downloader.cardAudios(card, job.albumVersion);   // GET ALL, o una a una las que faltan
     try { this.listId = await bot.backToList(card, this.listId!); } catch { this.listId = null; }
     return audios;
   };
@@ -107,6 +116,7 @@ export class Discography {
     if (job) job.resetForRetry();
     else {
       job = new DownloadJob(this.artist, album.title, this.index);
+      job.albumVersion = versionOfAlbum(album.title, true);   // los títulos vienen de la lista del bot
       job.discography = this.id;
       downloader.jobs.set(job.id, job);
       album.job_id = job.id;

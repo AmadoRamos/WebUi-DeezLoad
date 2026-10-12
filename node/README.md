@@ -45,6 +45,25 @@ Solo se muestran las canciones de la primera página de resultados del bot (unas
 esa (las que ya tienes no lo muestran). Se busca igual, por título y artista, y se elige la versión
 de ese álbum; si el bot no la tiene en ese álbum y hay varias versiones, avisa en lugar de bajar otra.
 
+**Versión explícita o limpia:** en **⚙ Ajustes** (arriba, junto al logo), «Si hay versión explícita y limpia,
+quedarse con: Explícita / Limpia / La que tenga» (se guarda en `ajustes.json` como `version`). Las
+dos versiones se guardan con el mismo nombre; cuál tienes se sabe por la etiqueta `ITUNESADVISORY`
+que el bot escribe en el FLAC (1 explícita, 0 limpia). Si tienes la otra versión, al descargar se
+baja la que llega y, si es la que quieres, **sobrescribe** el archivo; si llega otra vez la misma
+versión, se descarta. Solo cuenta como «ya la tienes» la versión que quieres. Si un archivo no es
+FLAC o no tiene la etiqueta, no se sabe su versión y nunca se sustituye. «La que tenga» (por
+defecto) es como antes: la que tengas vale.
+
+El nombre del álbum también cuenta: la lista de álbumes del bot marca los explícitos con 🅴
+(«STANS (The Official Soundtrack) 🅴» frente a «STANS (The Official Soundtrack)»). Si el álbum es
+de la otra versión, no puede traer la que quieres y no se baja nada de él que ya tengas. En una
+discografía, si eliges las dos versiones de un álbum, solo se descarga la que prefieres (la tarjeta
+dice cuál se omite). La búsqueda directa del bot no marca el 🅴 (devuelve dos «STANS (The Official
+Soundtrack)» iguales): con un álbum abierto así no se sabe su versión, y se baja y se mira la
+etiqueta de cada canción. Ojo: la versión limpia a veces trae el título censurado («Just Don't Give
+a F\*\*» frente a «Just Don't Give A Fuck»); con nombres distintos no se reconocen como la misma
+canción y se guardan las dos.
+
 **Álbumes que ya tienes en parte:** al descargar un álbum (o una discografía), si ya tienes algunas
 de sus canciones y faltan como mucho 10 (`UNA_A_UNA_MAX` en el `.env`), se piden una a una solo
 las que faltan, en lugar de GET ALL (que hace al bot enviar el álbum entero). Si ya las tienes
@@ -145,7 +164,7 @@ Si el bot no reacciona ni insistiendo, el error sale en menos de un minuto (3 pu
 npm test
 ```
 
-188 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
+201 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
 nombres engañosos ("Quiero Más", "Back in Black"), discografía con BACK, espera tras GET ALL,
 traducción de mensajes de GramJS y las peticiones que se envían a Telegram.
 Fase 2: descargas en secuencia y hasta 5 a la vez (con cambio en caliente y orden por álbum),

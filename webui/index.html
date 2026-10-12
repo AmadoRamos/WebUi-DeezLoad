@@ -187,6 +187,16 @@
   .par-hint { color: var(--dim); font-size: 13px; flex-basis: 100%; }
   .par-hint.ok { color: var(--mint); }
   .par-hint.err { color: var(--err); }
+  .par[hidden] { display: none; }
+  /* Menú de ajustes: el diálogo de la discografía, en oscuro como la bandeja (mismos selectores) */
+  .disc-dlg.set-dlg { background: var(--deeper); color: var(--paper); border: 1px solid rgba(255,245,238,.28);
+                     box-shadow: 0 30px 80px rgba(0,0,0,.65); }
+  .disc-dlg.set-dlg::backdrop { background: rgba(4,6,28,.82); backdrop-filter: blur(3px); }   /* más contraste con la página */
+  .set-dlg .dd-lead { color: var(--dim); }
+  .set-dlg .par { padding: 0 0 18px; }
+  .set-btn { border: 2px solid rgba(255,245,238,.35); background: transparent; color: var(--paper); border-radius: 999px;
+             padding: 6px 14px; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .set-btn:hover { border-color: var(--sun); color: var(--sun); }
   .files .now { color: var(--sun); }
   .files .bad { color: var(--err); }
   .empty { color: var(--dim); margin: 0; padding: 4px 0 8px; }
@@ -315,6 +325,7 @@
 <body>
 <div class="bar-top">
   <a class="mark" href="./">deez<i>load</i></a>
+  <button type="button" class="set-btn" id="setBtn" aria-haspopup="dialog"><span aria-hidden="true">⚙</span> Ajustes</button>
   <span class="status" id="cfg">Conectando…</span>
 </div>
 <p class="demo" id="demoBar" hidden>Modo demostración: la página se abrió sin el servidor, así que muestra datos de ejemplo.</p>
@@ -356,16 +367,29 @@
   </form>
 </dialog>
 
-<section class="dock" id="dock" aria-label="Descargas">
-  <button class="dock-bar" id="dockBar" aria-expanded="false" aria-controls="tray">
-    <b>Descargas</b><span class="sum" id="dockSum">Sin descargas todavía</span><span class="chev" aria-hidden="true">⌃</span>
-  </button>
-  <div class="tray" id="tray">
+<dialog class="disc-dlg set-dlg" id="setDlg" aria-labelledby="setTitle">
+  <form method="dialog">
+    <h2 id="setTitle">Ajustes</h2>
+    <p class="dd-lead">Se aplican al momento y se guardan en ajustes.json.</p>
     <div class="par" id="par">
       <span class="par-lbl" id="parLbl">Descargas simultáneas</span>
       <div class="seg" role="group" aria-labelledby="parLbl" id="parSeg"></div>
       <span class="par-hint" id="parHint" role="status"></span>
     </div>
+    <div class="par" id="ver" hidden>
+      <span class="par-lbl" id="verLbl">Si hay versión explícita y limpia, quedarse con</span>
+      <div class="seg" role="group" aria-labelledby="verLbl" id="verSeg"></div>
+      <span class="par-hint" id="verHint" role="status"></span>
+    </div>
+    <div class="dd-actions"><button type="submit" class="btn">Listo</button></div>
+  </form>
+</dialog>
+
+<section class="dock" id="dock" aria-label="Descargas">
+  <button class="dock-bar" id="dockBar" aria-expanded="false" aria-controls="tray">
+    <b>Descargas</b><span class="sum" id="dockSum">Sin descargas todavía</span><span class="chev" aria-hidden="true">⌃</span>
+  </button>
+  <div class="tray" id="tray">
     <div class="tray-in" id="jobsBox"><p class="empty">Cuando descargues un álbum, verás aquí su avance.</p></div></div>
 </section>
 
@@ -472,7 +496,8 @@ const API = {
   // name: el nombre que dio el bot (búsqueda directa del álbum); artist + index eligen al artista en el bot
   tracks: (artist, album, index = 0, name = "") =>
     jget(`/api/tracks?artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}&index=${index}&name=${encodeURIComponent(name)}`),
-  download: (artist, album, index = 0, name = "") => jpost("/api/download", { artist, album, index, name }),
+  // lista: el título viene de la lista de álbumes del bot (con 🅴 si es explícito: el servidor sabe su versión)
+  download: (artist, album, index = 0, name = "", lista = false) => jpost("/api/download", { artist, album, index, name, lista }),
   jobs: () => jget("/api/jobs"),
   activity: () => jget("/api/actividad"),
   settings: () => jget("/api/ajustes"),
@@ -482,8 +507,8 @@ const API = {
   startDiscography: (body) => jpost("/api/discografias", body),
   discographyAction: (id, action) => jpost(`/api/discografias/${encodeURIComponent(id)}/${action}`, {}),
   estimate: (ids) => jpost("/api/estimacion", { ids }),
-  existing: (artist, tracks) => jpost("/api/existentes",
-    { artist, tracks: tracks.map((t) => ({ titulo: t.titulo || "", artista: t.artista || "" })) }),
+  existing: (artist, tracks, album = null, lista = false) => jpost("/api/existentes",
+    { artist, album, lista, tracks: tracks.map((t) => ({ titulo: t.titulo || "", artista: t.artista || "" })) }),
   covers: (artist, fans, albums) => jpost("/api/covers", { artist, fans, albums }),
   albumInfo: (id) => jget(`/api/deezer/album/${encodeURIComponent(id)}`),
 };
@@ -1146,13 +1171,16 @@ async function downloadTrack(album, t, b) {
   }
 }
 
+// ¿El álbum está en la lista de álbumes del artista que mostró el bot? (su nombre lleva 🅴 si es explícito)
+const fromList = (album) => Object.values(state.sections || {}).some((titles) => titles.includes(album));
+
 // Canciones que ya están en la carpeta de descargas (por artista y título).
 async function markExisting(album, tracks) {
   const note = $("#haveNote");
   note.textContent = "Comprobando si ya tienes estas canciones en tu carpeta…";
   note.hidden = false;
   let found = [];
-  try { found = (await API.existing(state.artistName || state.artist, tracks)).existentes || []; } catch (e) { note.hidden = true; return; }
+  try { found = (await API.existing(state.artistName || state.artist, tracks, album, fromList(album))).existentes || []; } catch (e) { note.hidden = true; return; }
   if (state.album !== album) return;
   if (!found.length) { note.textContent = "Ninguna de estas canciones está en tu carpeta todavía."; return; }
   const items = $$("#sheetBody .tracks li");
@@ -1168,7 +1196,7 @@ async function startDownload(album, btn) {
   const note = $("#dlNote");
   btn.disabled = true; btn.textContent = "Añadiendo…"; note.className = "note"; note.textContent = "";
   try {
-    await API.download(state.artist, album, state.index, state.artistName);
+    await API.download(state.artist, album, state.index, state.artistName, fromList(album));
     note.textContent = "Añadido a descargas. Sigue su avance en la bandeja de abajo.";
     setDock(true);
     refreshJobs();
@@ -1398,6 +1426,8 @@ function discCardHTML(dc, jobs) {
   else if (dc.status === "queued") line = "Esperando a que termine otra discografía.";
   else if (dc.status === "paused") line = next ? `En pausa. Al reanudar sigue «${next.title}».` : "En pausa.";
   else line = discSummary(dc) + ".";
+  const om = dc.omitidos || [];   // la otra versión (explícita / limpia) de otro álbum elegido
+  if (om.length) line = line.replace(/\.?$/, ".") + ` No se baja${om.length > 1 ? "n" : ""} ${om.map((t) => `«${t}»`).join(", ")}: es la otra versión de un álbum elegido.`;
   let ctl = "";
   if (dc.status === "running" || dc.status === "queued" || dc.status === "paused") {
     const msg = dc.cancelando ? "Se cancelará al terminar el álbum en curso."
@@ -1597,7 +1627,42 @@ async function savePar(n) {
   parTimer = setTimeout(() => renderPar(), 5000);
 }
 
+/* ===== Con qué versión quedarse si hay explícita y limpia (solo el servidor de Node lo admite) ===== */
+const VER = { v: null };   // null: el servidor no lo admite (versión en Python): no se muestra
+const VER_OPTS = [["explicita", "Explícita"], ["limpia", "Limpia"], ["cualquiera", "La que tenga"]];
+const VER_HINT = {
+  explicita: "Si tienes la limpia, al descargar se baja la explícita y la sustituye.",
+  limpia: "Si tienes la explícita, al descargar se baja la limpia y la sustituye.",
+  cualquiera: "La versión que ya tengas vale; no se vuelve a bajar.",
+};
+function renderVer(note, cls) {
+  $("#ver").hidden = !VER.v;
+  if (!VER.v) return;
+  $("#verSeg").innerHTML = VER_OPTS.map(([v, t]) => `<button type="button" data-v="${v}" aria-pressed="${v === VER.v}">${t}</button>`).join("");
+  const hint = $("#verHint");
+  hint.className = "par-hint" + (cls ? " " + cls : "");
+  hint.textContent = note || VER_HINT[VER.v];
+  $$("#verSeg button").forEach((b) => (b.onclick = () => saveVer(b.dataset.v)));
+}
+let savingVer = false;
+async function saveVer(v) {
+  if (v === VER.v) return;
+  savingVer = true;
+  const prev = VER.v;
+  VER.v = v; renderVer("Guardando…");
+  try {
+    const s = await API.saveSettings({ version: v });
+    VER.v = s.version;
+    renderVer(s.aviso || VER_HINT[VER.v], s.aviso ? "err" : "ok");
+  } catch (e) {
+    VER.v = prev; renderVer(`No se pudo cambiar: ${e.message}`, "err");
+  }
+  $(`#verSeg button[data-v="${VER.v}"]`)?.focus();
+  savingVer = false;
+}
+
 $("#searchForm").addEventListener("submit", search);
+$("#setBtn").onclick = () => $("#setDlg").showModal();
 $$("input[name=mode]").forEach((r) => (r.onchange = setMode));
 setMode();  // el navegador puede recordar la opción al recargar
 $("#dockBar").onclick = () => setDock(!$("#dock").classList.contains("expanded"));
@@ -1612,6 +1677,7 @@ var live = liveUpdates({
   onDiscs,
   onActivity: renderActivity,
   onSettings: (s) => {  // p. ej. si lo cambiaste en otra pestaña
+    if (!savingVer && (s.version || null) !== VER.v) { VER.v = s.version || null; renderVer(); }
     if (savingPar || (s.descargas_simultaneas === PAR.n && (s.maximo || 5) === PAR.max)) return;
     PAR.n = s.descargas_simultaneas; PAR.max = s.maximo || 5; renderPar();
   },

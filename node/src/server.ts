@@ -12,7 +12,7 @@ import { extname, join, resolve, sep } from "node:path";
 import type { Bot } from "./bot.js";
 import { Covers } from "./covers.js";
 import { Discography } from "./discography.js";
-import { DownloadJob, Downloader, MAX_PARALLEL, Mutex } from "./downloads.js";
+import { DownloadJob, Downloader, MAX_PARALLEL, Mutex, VERSIONS, versionOfAlbum, type Version } from "./downloads.js";
 import * as songs from "./songs.js";
 import type { Transport } from "./types.js";
 
@@ -170,7 +170,8 @@ export class App {
       for (const disc of this.discographies.values())
         if (disc.queuedKeys().has(key))
           throw new HttpError(409, `«${album.trim()}» ya está en la cola de la discografía de ${disc.name}.`);
-      return { job_id: dl.start(artist, album, index, undefined, str(b, "name", "")).id };
+      // lista: el título viene de la lista de álbumes del bot (con 🅴 si es explícito)
+      return { job_id: dl.start(artist, album, index, undefined, str(b, "name", ""), versionOfAlbum(album, b.lista === true)).id };
     }
     if (path === "/api/existentes") {
       allow(method, "POST");
@@ -181,14 +182,29 @@ export class App {
         return { titulo: str(o, "titulo"), artista: str(o, "artista", "") };
       });
       const index = songs.folderIndex(this.o.downloadsDir);
-      return { existentes: tracks.flatMap((t, i) => (songs.find(index, t.titulo, [t.artista, artist]) ? [i] : [])) };
+      // "ya la tienes" solo si es la versión que se quiere (explícita / limpia), o si el álbum es de
+      // la otra versión y no puede traerla
+      const albumVersion = typeof b.album === "string" ? versionOfAlbum(b.album, b.lista === true) : null;
+      return { existentes: tracks.flatMap((t, i) => {
+        const f = songs.find(index, t.titulo, [t.artista, artist], (n) => dl.keeps(n));
+        return f && dl.counts(f, albumVersion) ? [i] : [];
+      }) };
     }
     if (path === "/api/ajustes") {
       allow(method, "GET", "POST");
       if (method === "GET") return this.settingsOut();
-      const n = int((await body()).descargas_simultaneas, "descargas_simultaneas");
-      if (n < 1 || n > MAX_PARALLEL) throw new HttpError(422, `Elige un número entre 1 y ${MAX_PARALLEL}.`);
-      const { aviso } = dl.setParallel(n);
+      const b = await body();
+      let aviso: string | undefined;
+      if (b.version !== undefined) {   // con qué versión quedarse: explícita / limpia / cualquiera
+        const v = str(b, "version") as Version;
+        if (!VERSIONS.includes(v)) throw new HttpError(422, `'version' debe ser una de: ${VERSIONS.join(", ")}.`);
+        ({ aviso } = dl.setVersion(v));
+      }
+      if (b.descargas_simultaneas !== undefined || b.version === undefined) {
+        const n = int(b.descargas_simultaneas, "descargas_simultaneas");
+        if (n < 1 || n > MAX_PARALLEL) throw new HttpError(422, `Elige un número entre 1 y ${MAX_PARALLEL}.`);
+        ({ aviso } = dl.setParallel(n));
+      }
       return { ...this.settingsOut(), ...(aviso ? { aviso } : {}) };
     }
     if (path === "/api/covers") {

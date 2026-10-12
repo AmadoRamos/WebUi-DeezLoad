@@ -59,10 +59,12 @@ Las dos comparten lo que está en la raíz del repo:
 El resto de tiempos y reintentos (`QUIET_SECONDS`, `MAX_WAIT`, `FILES_WAIT`, `BOT_RETRIES`,
 `SLOW_WAIT`, `FLOOD_MAX_WAIT`…) están explicados en `env.example`.
 
-`ajustes.json` guarda cuántas descargas se hacen a la vez (también se cambia desde la interfaz):
+`ajustes.json` guarda cuántas descargas se hacen a la vez y, en la versión Node, con qué versión
+quedarse si una canción es explícita y limpia (`explicita`, `limpia` o `cualquiera`). Las dos cosas
+se cambian también desde la interfaz, en **⚙ Ajustes** (arriba, junto al logo):
 
 ```json
-{ "descargas_simultaneas": 5 }
+{ "descargas_simultaneas": 5, "version": "cualquiera" }
 ```
 
 > **Seguridad**: el `.env` y los archivos `*.session` dan acceso a tu cuenta de Telegram. Trátalos
