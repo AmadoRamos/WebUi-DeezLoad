@@ -188,6 +188,12 @@
   .par-hint.ok { color: var(--mint); }
   .par-hint.err { color: var(--err); }
   .par[hidden] { display: none; }
+  /* Volver a abrir la ficha del álbum */
+  .sheet-tab { position: fixed; right: 16px; bottom: 84px; z-index: 16; max-width: min(320px, calc(100vw - 32px)); border: 0;
+               border-radius: 999px; padding: 10px 18px; background: var(--paper); color: var(--deeper); font-weight: 700;
+               box-shadow: 0 10px 30px rgba(8,12,50,.45); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sheet-tab:hover { background: var(--sun); color: var(--sun-ink); }
+  .sheet-tab[hidden], body:has(.dock.expanded) .sheet-tab { display: none; }   /* no tapar la bandeja abierta */
   /* Menú de ajustes: el diálogo de la discografía, en oscuro como la bandeja (mismos selectores) */
   .disc-dlg.set-dlg { background: var(--deeper); color: var(--paper); border: 1px solid rgba(255,245,238,.28);
                      box-shadow: 0 30px 80px rgba(0,0,0,.65); }
@@ -303,6 +309,9 @@
   .sheet .live .slow { color: #8a5a00; }
   .activity { display: flex; flex-direction: column; gap: 10px; max-width: 680px; margin-top: 14px; }
   .activity:empty { display: none; }
+  .act-open { all: unset; display: block; cursor: pointer; border-radius: 14px; }
+  .act-open:hover .live { outline: 2px solid var(--sun); }
+  .act-open:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
   .activity .live { background: var(--deep); border-radius: 14px; padding: 10px 14px; font-size: 14px; }
 
   /* Avisos breves */
@@ -347,6 +356,7 @@
 <main id="results" aria-live="polite"></main>
 
 <div class="scrim" id="scrim"></div>
+<button type="button" class="sheet-tab" id="sheetTab" hidden></button>
 <aside class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" aria-hidden="true">
   <button class="x" id="sheetClose" aria-label="Cerrar">×</button>
   <div id="sheetBody"></div>
@@ -939,6 +949,7 @@ async function loadConfig() {
 
 async function search(ev) {
   ev?.preventDefault();
+  hideSheetTab();   // la ficha anterior era de otra búsqueda
   const artist = $("#artist").value.trim();
   if (!artist && !songMode() && $("#album").value.trim()) return searchAlbums($("#album").value.trim());
   if (!artist) { $("#artist").focus(); return; }
@@ -1105,11 +1116,13 @@ function renderAlbums(data) {
 }
 
 function openSheet() {
+  $("#sheetTab").hidden = true;
   document.body.classList.add("open");
   $("#sheet").setAttribute("aria-hidden", "false");
   setTimeout(() => $("#sheetClose").focus(), 50);
 }
 function closeSheet() {
+  if (state.album) showSheetTab(state.album);   // para volver a abrirla
   document.body.classList.remove("open");
   $("#sheet").setAttribute("aria-hidden", "true");
   $$(".disc[aria-current]").forEach((d) => d.removeAttribute("aria-current"));
@@ -1117,8 +1130,25 @@ function closeSheet() {
   state.lastFocus?.focus();
 }
 
+// Botón para volver a abrir la ficha del álbum después de cerrarla (tal como estaba).
+function showSheetTab(album) {
+  state.lastAlbum = album;
+  const t = $("#sheetTab");
+  t.textContent = `Ver «${album}»`;
+  t.setAttribute("aria-label", `Volver a abrir la ficha de «${album}»`);
+  t.hidden = false;
+}
+function hideSheetTab() { $("#sheetTab").hidden = true; state.lastAlbum = null; }
+function reopenSheet() {
+  const album = state.lastAlbum;
+  if (!album) return;
+  if (state.trackData || state.loading === album) { state.album = album; openSheet(); }   // cargada o cargando: sin pedir nada más al bot
+  else openAlbum(state.lastFocus || $("#sheetTab"), album);   // se cerró mientras cargaba: se pide otra vez
+}
+
 async function openAlbum(el, album = el.dataset.album) {
   state.album = album; state.lastFocus = el;
+  state.lastAlbum = null;   // la ficha anterior se sustituye: su respuesta, si llega tarde, ya no se muestra
   $$(".disc[aria-current]").forEach((d) => d.removeAttribute("aria-current"));
   if (el.classList.contains("disc")) el.setAttribute("aria-current", "true");
   state.trackData = null;
@@ -1127,11 +1157,15 @@ async function openAlbum(el, album = el.dataset.album) {
   openSheet();
   refreshActivity();
   loadDetails(album).then(() => { if (state.album === album) refreshFacts(); });
+  const current = () => state.album === album || state.lastAlbum === album;   // abierta, o cerrada para reabrirla
+  state.loading = album;
   try {
     const data = await API.tracks(state.artist, album, state.index, state.artistName);
-    if (state.album === album) renderTracks(album, data);
+    if (current()) renderTracks(album, data);
   } catch (e) {
-    if (state.album === album) $("#sheetBody .loading").outerHTML = `<p class="note err">No se pudieron cargar las pistas: ${esc(e.message)}</p>`;
+    if (current()) $("#sheetBody .loading").outerHTML = `<p class="note err">No se pudieron cargar las pistas: ${esc(e.message)}</p>`;
+  } finally {
+    if (state.loading === album) state.loading = null;
   }
 }
 
@@ -1181,7 +1215,7 @@ async function markExisting(album, tracks) {
   note.hidden = false;
   let found = [];
   try { found = (await API.existing(state.artistName || state.artist, tracks, album, fromList(album))).existentes || []; } catch (e) { note.hidden = true; return; }
-  if (state.album !== album) return;
+  if (state.album !== album && state.lastAlbum !== album) return;
   if (!found.length) { note.textContent = "Ninguna de estas canciones está en tu carpeta todavía."; return; }
   const items = $$("#sheetBody .tracks li");
   found.forEach((i) => items[i]?.classList.add("have"));
@@ -1347,7 +1381,10 @@ function renderActivity(ops) {
   // ...y el resto (por ejemplo, la preparación de una descarga) bajo el buscador.
   $("#activity").innerHTML = ops.filter((o) => !shown.has(o.id)).map((op) => {
     const det = opDetail(op, ops);
-    return liveHTML({ head: opHeadline(op), step: det.step, secs: det.secs, slow: det.slow, waiting: op.estado === "esperando" });
+    const html = liveHTML({ head: opHeadline(op), step: det.step, secs: det.secs, slow: det.slow, waiting: op.estado === "esperando" });
+    // El álbum cuya ficha se cerró mientras cargaba: al pulsar el aviso, se vuelve a abrir
+    return op.tipo === "album" && op.titulo === state.lastAlbum
+      ? `<button type="button" class="act-open" title="Ver la ficha del álbum">${html}</button>` : html;
   }).join("");
 }
 function refreshActivity() { live?.kick(); }
@@ -1667,6 +1704,8 @@ $$("input[name=mode]").forEach((r) => (r.onchange = setMode));
 setMode();  // el navegador puede recordar la opción al recargar
 $("#dockBar").onclick = () => setDock(!$("#dock").classList.contains("expanded"));
 $("#sheetClose").onclick = closeSheet;
+$("#sheetTab").onclick = reopenSheet;
+$("#activity").onclick = (e) => { if (e.target.closest(".act-open")) reopenSheet(); };
 $("#scrim").onclick = closeSheet;
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && document.body.classList.contains("open")) closeSheet(); });
 if (DEMO) $("#demoBar").hidden = false;
