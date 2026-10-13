@@ -1,6 +1,6 @@
 /** Servidor web: rutas, avisos en vivo (SSE) y cierre, con el doble del bot. */
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,10 +9,10 @@ import { Covers } from "../src/covers.js";
 import { App } from "../src/server.js";
 import { StubBot, fakeDeezer } from "./support/stub-bot.js";
 
-let app: App, base: string;
+let app: App, base: string, root: string;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 before(async () => {
-  const root = mkdtempSync(join(tmpdir(), "web-"));
+  root = mkdtempSync(join(tmpdir(), "web-"));
   mkdirSync(join(root, "webui"));
   writeFileSync(join(root, "webui", "index.html"), "<!doctype html><title>deezload</title>");
   const stub = new StubBot(0.02);
@@ -74,11 +74,17 @@ it("ajustes por SSE y archivo ajustes.json", async () => {
   await sleep(100);
   assert.equal((await post("/api/ajustes", { descargas_simultaneas: 3 })).status, 200);
   const { events } = await listening;
-  assert.deepEqual(events.find(([n, d]) => n === "cambios" && d.ajustes)?.[1].ajustes, { descargas_simultaneas: 3, version: "cualquiera", maximo: 5 });
+  const sent = events.find(([n, d]) => n === "cambios" && d.ajustes)?.[1].ajustes;
+  assert.deepEqual([sent.descargas_simultaneas, sent.version, sent.pausa_discografia, sent.maximo], [3, "cualquiera", 0, 5]);   // pausa: DISC_PAUSE del servidor
   // con qué versión quedarse: se guarda sin tocar las descargas simultáneas
   assert.equal((await (await post("/api/ajustes", { version: "explicita" })).json()).version, "explicita");
   assert.equal((await post("/api/ajustes", { version: "otra" })).status, 422);
   assert.equal((await (await fetch(`${base}/api/ajustes`)).json()).descargas_simultaneas, 3);
+  // una a una y pausa de discografía: se guardan sin tocar lo demás; fuera de rango, 422
+  const s = await (await post("/api/ajustes", { una_a_una_max: 4, pausa_discografia: 30 })).json();
+  assert.deepEqual([s.una_a_una_max, s.pausa_discografia, s.descargas_simultaneas, s.version], [4, 30, 3, "explicita"]);
+  assert.equal((await post("/api/ajustes", { pausa_discografia: 500 })).status, 422);
+  assert.equal(JSON.parse(readFileSync(join(root, "ajustes.json"), "utf8")).una_a_una_max, 4);
 });
 
 it("álbum en la cola de una discografía: 409; otro artista con el mismo álbum: sí", async () => {

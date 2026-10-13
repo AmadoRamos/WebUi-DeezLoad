@@ -59,13 +59,23 @@ Las dos comparten lo que está en la raíz del repo:
 El resto de tiempos y reintentos (`QUIET_SECONDS`, `MAX_WAIT`, `FILES_WAIT`, `BOT_RETRIES`,
 `SLOW_WAIT`, `FLOOD_MAX_WAIT`…) están explicados en `env.example`.
 
-`ajustes.json` guarda cuántas descargas se hacen a la vez y, en la versión Node, con qué versión
-quedarse si una canción es explícita y limpia (`explicita`, `limpia` o `cualquiera`). Las dos cosas
-se cambian también desde la interfaz, en **⚙ Ajustes** (arriba, junto al logo):
+`ajustes.json` guarda los ajustes de **⚙ Ajustes** (arriba, junto al logo), que se cambian desde la
+interfaz y se aplican al momento: cuántas descargas a la vez y, en la versión Node, con qué versión
+quedarse si una canción es explícita y limpia (`explicita`, `limpia` o `cualquiera`), hasta cuántas
+canciones que faltan se piden una a una (`una_a_una_max`; por defecto `UNA_A_UNA_MAX`) y la pausa entre
+álbumes de una discografía (`pausa_discografia`; por defecto `DISC_PAUSE`):
 
 ```json
-{ "descargas_simultaneas": 5, "version": "cualquiera" }
+{ "descargas_simultaneas": 5, "version": "cualquiera", "una_a_una_max": 10, "pausa_discografia": 5 }
 ```
+
+En el mismo menú se activan los avisos del sistema (Windows, macOS…) al terminar una descarga, con la
+página en segundo plano. Eso se guarda en el navegador, no en `ajustes.json`, y solo funciona abriendo
+la página en el propio equipo (`http://127.0.0.1:8000`) o con https.
+
+El menú muestra además el bot y la carpeta de descargas (solo lectura: se cambia con `DOWNLOADS_DIR`
+en el `.env`). El punto del botón **⚙ Ajustes** indica si la página llega al servidor: verde si responde,
+rojo si no.
 
 > **Seguridad**: el `.env` y los archivos `*.session` dan acceso a tu cuenta de Telegram. Trátalos
 > como contraseñas; ya están en `.gitignore`. Cada versión usa su propia sesión: usar la misma en dos

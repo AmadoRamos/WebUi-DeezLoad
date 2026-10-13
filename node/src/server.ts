@@ -12,7 +12,7 @@ import { extname, join, resolve, sep } from "node:path";
 import type { Bot } from "./bot.js";
 import { Covers } from "./covers.js";
 import { Discography } from "./discography.js";
-import { DownloadJob, Downloader, MAX_PARALLEL, Mutex, VERSIONS, versionOfAlbum, type Version } from "./downloads.js";
+import { DownloadJob, Downloader, LIMITS, MAX_PARALLEL, Mutex, VERSIONS, versionOfAlbum, type NumberSetting, type Version } from "./downloads.js";
 import * as songs from "./songs.js";
 import type { Transport } from "./types.js";
 
@@ -86,7 +86,8 @@ export class App {
 
   constructor(private o: AppOptions) {
     this.covers = o.covers ?? new Covers();
-    this.downloader = new Downloader(o.transport, o.bot, o.downloadsDir, o.settingsFile, () => this.notify());
+    this.downloader = new Downloader(o.transport, o.bot, o.downloadsDir, o.settingsFile, () => this.notify(),
+                                     { pausa_discografia: o.discPause });   // DISC_PAUSE, si ajustes.json no la tiene
     this.batchMs = o.eventBatchMs ?? 300;
     this.pingMs = o.eventPingMs ?? 15_000;
     this.server = createServer((req, res) => { void this.handle(req, res); });
@@ -200,7 +201,14 @@ export class App {
         if (!VERSIONS.includes(v)) throw new HttpError(422, `'version' debe ser una de: ${VERSIONS.join(", ")}.`);
         ({ aviso } = dl.setVersion(v));
       }
-      if (b.descargas_simultaneas !== undefined || b.version === undefined) {
+      for (const key of Object.keys(LIMITS) as NumberSetting[]) {   // una a una, pausa de discografía
+        if (b[key] === undefined) continue;
+        const n = int(b[key], key), [min, max] = LIMITS[key];
+        if (n < min || n > max) throw new HttpError(422, `'${key}': elige un número entre ${min} y ${max}.`);
+        ({ aviso } = dl.setNumber(key, n));
+      }
+      const others = b.version !== undefined || Object.keys(LIMITS).some((k) => b[k] !== undefined);
+      if (b.descargas_simultaneas !== undefined || !others) {
         const n = int(b.descargas_simultaneas, "descargas_simultaneas");
         if (n < 1 || n > MAX_PARALLEL) throw new HttpError(422, `Elige un número entre 1 y ${MAX_PARALLEL}.`);
         ({ aviso } = dl.setParallel(n));
@@ -263,7 +271,7 @@ export class App {
       const albums = list(b, "albums").map((a, i) => { const o = obj(a, `albums[${i}]`); return { title: str(o, "title"), section: str(o, "section", "") }; });
       if (!albums.length) throw new HttpError(422, "Elige al menos un lanzamiento.");
       const disc = new Discography(artist.trim(), (name || artist).trim(), index, albums,
-        { bot, downloader: dl, turn: this.discTurn, pauseSeconds: this.o.discPause, notify: this.notify });
+        { bot, downloader: dl, turn: this.discTurn, get pauseSeconds() { return dl.settings.pausa_discografia; }, notify: this.notify });
       this.discographies.set(disc.id, disc);
       this.notify();
       void disc.run();

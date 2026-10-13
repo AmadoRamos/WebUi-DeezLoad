@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { beforeEach, describe, it } from "node:test";
 import type { Bot } from "../src/bot.js";
 import { DownloadJob, Downloader, FileSlots, loadSettings, Mutex } from "../src/downloads.js";
+import { cfg } from "../src/config.js";
 import type { Msg, Transport } from "../src/types.js";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -264,7 +265,7 @@ describe("álbum con canciones que ya tienes", () => {
   } as unknown as Bot;
   const run = async (have: string[], max = 10) => {
     const d = new Downloader(files as unknown as Transport, partialBot, dir, settings);
-    d.oneByOneMax = max;
+    d.settings.una_a_una_max = max;
     for (const t of have) writeFileSync(join(dir, `Artista - ${t}.flac`), "ya estaba");
     const job = new DownloadJob("Artista", "Disco");
     await d.runJob(job);
@@ -300,3 +301,11 @@ describe("álbum con canciones que ya tienes", () => {
     assert.deepEqual(job.tracks.map((t) => t.status), ["done", "exists", "done"]);
   });
 });
+
+it("ajustes numéricos: de ajustes.json si valen; si no, el valor por defecto (el del .env o el del servidor)", () => {
+  writeFileSync(settings, JSON.stringify({ una_a_una_max: 99, pausa_discografia: 3 }));
+  assert.deepEqual(Object.values(pick(loadSettings(settings, { pausa_discografia: 7 }))), [cfg.oneByOneMax, 3]);   // 99: fuera de rango
+  writeFileSync(settings, JSON.stringify({ una_a_una_max: 0 }));
+  assert.deepEqual(Object.values(pick(loadSettings(settings, { pausa_discografia: 7 }))), [0, 7]);   // 0: siempre GET ALL
+});
+const pick = (s: { una_a_una_max: number; pausa_discografia: number }) => ({ a: s.una_a_una_max, b: s.pausa_discografia });

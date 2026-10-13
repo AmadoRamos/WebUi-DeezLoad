@@ -22,16 +22,32 @@ export const MAX_PARALLEL = 5;
  *  ("cualquiera": la que ya tengas, sin volver a bajarla). */
 export const VERSIONS = ["cualquiera", "explicita", "limpia"] as const;
 export type Version = (typeof VERSIONS)[number];
-export interface Settings { descargas_simultaneas: number; version: Version }
+export interface Settings {
+  descargas_simultaneas: number;
+  version: Version;
+  una_a_una_max: number;       // álbum a medias: hasta cuántas que faltan se piden una a una (si no, GET ALL)
+  pausa_discografia: number;   // segundos de pausa entre álbumes de una discografía
+}
+/** Límites de los ajustes numéricos que se cambian desde la interfaz. */
+export const LIMITS = { una_a_una_max: [0, 50], pausa_discografia: [0, 120] } as const;
+export type NumberSetting = keyof typeof LIMITS;
 
-export function loadSettings(file: string): Settings {
-  let data: { descargas_simultaneas?: unknown; version?: unknown } = {};
+/** Lee ajustes.json. Lo que falte o no valga toma el valor por defecto (el del .env). */
+export function loadSettings(file: string, defaults: Partial<Pick<Settings, NumberSetting>> = {}): Settings {
+  let data: Record<string, unknown> = {};
   try { data = JSON.parse(readFileSync(file, "utf8")); } catch { /* no existe o está dañado */ }
   const n = data.descargas_simultaneas;
   return {
     descargas_simultaneas: Number.isInteger(n) && (n as number) >= 1 && (n as number) <= MAX_PARALLEL ? (n as number) : 1,
     version: VERSIONS.includes(data.version as Version) ? (data.version as Version) : "cualquiera",
+    una_a_una_max: inRange(data.una_a_una_max, "una_a_una_max") ?? defaults.una_a_una_max ?? cfg.oneByOneMax,
+    pausa_discografia: inRange(data.pausa_discografia, "pausa_discografia") ?? defaults.pausa_discografia ?? cfg.discPause,
   };
+}
+
+function inRange(v: unknown, key: NumberSetting): number | null {
+  const [min, max] = LIMITS[key];
+  return typeof v === "number" && Number.isInteger(v) && v >= min && v <= max ? v : null;
 }
 
 export function saveSettings(file: string, s: Settings): void {
@@ -192,8 +208,6 @@ export class Downloader {
   settings: Settings;
   slots: FileSlots;
   queue: BotQueue;
-  /** Álbum a medias: hasta cuántas que faltan se piden una a una; si faltan más, GET ALL. */
-  oneByOneMax = cfg.oneByOneMax;
   private fileLocks = new Map<string, Mutex>();
 
   constructor(
@@ -202,9 +216,10 @@ export class Downloader {
     public downloadsDir: string,
     private settingsFile: string,
     private notify: () => void = () => {},
+    defaults: Partial<Pick<Settings, NumberSetting>> = {},   // si ajustes.json no los tiene (p. ej. DISC_PAUSE del servidor)
   ) {
     mkdirSync(downloadsDir, { recursive: true });
-    this.settings = loadSettings(settingsFile);
+    this.settings = loadSettings(settingsFile, defaults);
     this.slots = new FileSlots(this.settings.descargas_simultaneas);
     this.queue = new BotQueue(notify);
   }
@@ -214,6 +229,17 @@ export class Downloader {
     if (!Number.isInteger(n) || n < 1 || n > MAX_PARALLEL) throw new RangeError(`Elige un número entre 1 y ${MAX_PARALLEL}.`);
     this.settings.descargas_simultaneas = n;
     this.slots.setLimit(n);
+    this.notify();
+    try { saveSettings(this.settingsFile, this.settings); }
+    catch (e) { return { aviso: `Se aplicó, pero no se pudo guardar en ajustes.json: ${(e as Error).message}` }; }
+    return {};
+  }
+
+  /** Cambia un ajuste numérico (una a una, pausa de discografía); se aplica al momento. */
+  setNumber(key: NumberSetting, n: number): { aviso?: string } {
+    const [min, max] = LIMITS[key];
+    if (!Number.isInteger(n) || n < min || n > max) throw new RangeError(`Elige un número entre ${min} y ${max}.`);
+    this.settings[key] = n;
     this.notify();
     try { saveSettings(this.settingsFile, this.settings); }
     catch (e) { return { aviso: `Se aplicó, pero no se pudo guardar en ajustes.json: ${(e as Error).message}` }; }
@@ -259,7 +285,7 @@ export class Downloader {
   };
 
   /** Pistas del álbum de la ficha `card`. Si ya tienes algunas (descarga parcial) y faltan como
-   *  mucho `oneByOneMax` (UNA_A_UNA_MAX), pide una a una
+   *  mucho `una_a_una_max` (ajustes; por defecto UNA_A_UNA_MAX), pide una a una
    *  solo las que faltan en lugar de GET ALL, y las que tienes ni se piden (salen como "ya
    *  estaba"); si las tienes todas, no se pide nada. Si no se puede (la ficha no muestra todas las
    *  canciones, una no se encuentra…), GET ALL como siempre: lo que ya está se salta al bajar. */
@@ -272,8 +298,9 @@ export class Downloader {
       return f && this.counts(f, albumVersion) ? f : null;
     }) ?? [];
     const missing = have.filter((h) => !h).length;
-    if (info && have.some(Boolean) && missing > this.oneByOneMax)
-      report(`Faltan ${missing} canciones (más de ${this.oneByOneMax}): pidiendo el álbum completo (GET ALL)`);
+    const max = this.settings.una_a_una_max;
+    if (info && have.some(Boolean) && missing > max)
+      report(`Faltan ${missing} canciones (más de ${max}): pidiendo el álbum completo (GET ALL)`);
     else if (info && have.some(Boolean)) {
       try {
         const out: Msg[] = [];

@@ -149,17 +149,18 @@ export class Discography {
   get ended() { return this.status === "completed" || this.status === "canceled"; }
 
   async run(): Promise<void> {
-    const { turn, pauseSeconds, notify } = this.ctx;
+    const { turn, notify } = this.ctx;
     try {
       await turn.run(async () => {
         const failed: number[] = [];
         for (let k = 0; k < this.albums.length; k++) {
           if (!(await this.gate())) return;
           if (!(await this.album(k))) failed.push(k);
-          if (k < this.albums.length - 1 && pauseSeconds > 0) {
+          const pause = this.ctx.pauseSeconds;   // se lee cada vez: cambiarla en Ajustes vale también aquí
+          if (k < this.albums.length - 1 && pause > 0) {
             this.note = "Pausa entre álbumes";
             notify();
-            await sleep(pauseSeconds * 1000);
+            await sleep(pause * 1000);
             this.note = null;
           }
         }

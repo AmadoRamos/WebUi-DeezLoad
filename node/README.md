@@ -65,7 +65,7 @@ a F\*\*» frente a «Just Don't Give A Fuck»); con nombres distintos no se reco
 canción y se guardan las dos.
 
 **Álbumes que ya tienes en parte:** al descargar un álbum (o una discografía), si ya tienes algunas
-de sus canciones y faltan como mucho 10 (`UNA_A_UNA_MAX` en el `.env`), se piden una a una solo
+de sus canciones y faltan como mucho 10 (se cambia en ⚙ Ajustes; por defecto `UNA_A_UNA_MAX`), se piden una a una solo
 las que faltan, en lugar de GET ALL (que hace al bot enviar el álbum entero). Si ya las tienes
 todas, no se le pide nada al bot. Si faltan más de 10, o no se puede pedirlas una a una (la ficha
 no muestra todas las canciones, una no se encuentra…), se usa GET ALL como siempre y lo que ya
@@ -164,7 +164,7 @@ Si el bot no reacciona ni insistiendo, el error sale en menos de un minuto (3 pu
 npm test
 ```
 
-201 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
+202 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
 nombres engañosos ("Quiero Más", "Back in Black"), discografía con BACK, espera tras GET ALL,
 traducción de mensajes de GramJS y las peticiones que se envían a Telegram.
 Fase 2: descargas en secuencia y hasta 5 a la vez (con cambio en caliente y orden por álbum),

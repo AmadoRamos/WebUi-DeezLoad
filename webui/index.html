@@ -27,9 +27,6 @@
   .bar-top { display: flex; align-items: center; gap: 16px; padding: 18px 32px; flex-wrap: wrap; }
   .mark { font: 800 20px/1 var(--display); color: var(--paper); text-decoration: none; letter-spacing: -.02em; }
   .mark i { font-style: normal; color: var(--sun); }
-  .status { margin-left: auto; font-size: 13px; color: var(--dim); display: flex; gap: 8px; align-items: center; }
-  .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--mint); }
-  .status.off::before { background: var(--err); }
   .demo { margin: 0 32px; padding: 8px 14px; border-radius: 10px; background: var(--deep); color: var(--sun); font-size: 13.5px; }
 
   /* Búsqueda: protagonista al inicio, compacta después */
@@ -200,9 +197,22 @@
   .disc-dlg.set-dlg::backdrop { background: rgba(4,6,28,.82); backdrop-filter: blur(3px); }   /* más contraste con la página */
   .set-dlg .dd-lead { color: var(--dim); }
   .set-dlg .par { padding: 0 0 18px; }
+  .num { display: inline-flex; align-items: center; gap: 8px; color: var(--dim); font-size: 14px; }
+  .num input { width: 64px; padding: 6px 10px; border: 2px solid transparent; border-radius: 10px; background: var(--deep);
+               color: var(--paper); font-weight: 700; text-align: center; }
+  .num input:focus { outline: none; border-color: var(--sun); }
   .set-btn { border: 2px solid rgba(255,245,238,.35); background: transparent; color: var(--paper); border-radius: 999px;
              padding: 6px 14px; font-weight: 700; font-size: 14px; cursor: pointer; }
   .set-btn:hover { border-color: var(--sun); color: var(--sun); }
+  .set-btn { display: inline-flex; align-items: center; gap: 6px; }
+  .set-btn .dot, .conn::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--dim); flex: none; }
+  .set-btn.on .dot, .conn.on::before { background: var(--mint); }
+  .set-btn.off .dot, .conn.off::before { background: var(--err); }
+  .conn { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
+  .ro { flex-basis: 100%; min-width: 0; padding: 8px 12px; border: 0; border-radius: 10px; background: var(--deep); color: var(--paper);
+        font: 13px/1.4 ui-monospace, Consolas, monospace; }
+  .ro:focus { outline: 2px solid var(--sun); }
+  .set-dlg code { font-size: 12.5px; color: var(--paper); }
   .files .now { color: var(--sun); }
   .files .bad { color: var(--err); }
   .empty { color: var(--dim); margin: 0; padding: 4px 0 8px; }
@@ -334,8 +344,7 @@
 <body>
 <div class="bar-top">
   <a class="mark" href="./">deez<i>load</i></a>
-  <button type="button" class="set-btn" id="setBtn" aria-haspopup="dialog"><span aria-hidden="true">⚙</span> Ajustes</button>
-  <span class="status" id="cfg">Conectando…</span>
+  <button type="button" class="set-btn" id="setBtn" aria-haspopup="dialog" title="Conectando…"><span aria-hidden="true">⚙</span> Ajustes<span class="dot" aria-hidden="true"></span></button>
 </div>
 <p class="demo" id="demoBar" hidden>Modo demostración: la página se abrió sin el servidor, así que muestra datos de ejemplo.</p>
 
@@ -381,6 +390,15 @@
   <form method="dialog">
     <h2 id="setTitle">Ajustes</h2>
     <p class="dd-lead">Se aplican al momento y se guardan en ajustes.json.</p>
+    <div class="par">
+      <span class="par-lbl">Bot de Telegram</span>
+      <span class="conn" id="cfgBot">Conectando…</span>
+    </div>
+    <div class="par">
+      <label class="par-lbl" for="cfgDir">Carpeta de descargas</label>
+      <input type="text" class="ro" id="cfgDir" readonly value="">
+      <span class="par-hint">Por ahora no se cambia desde aquí: es <code>DOWNLOADS_DIR</code> en el archivo <code>.env</code>.</span>
+    </div>
     <div class="par" id="par">
       <span class="par-lbl" id="parLbl">Descargas simultáneas</span>
       <div class="seg" role="group" aria-labelledby="parLbl" id="parSeg"></div>
@@ -390,6 +408,21 @@
       <span class="par-lbl" id="verLbl">Si hay versión explícita y limpia, quedarse con</span>
       <div class="seg" role="group" aria-labelledby="verLbl" id="verSeg"></div>
       <span class="par-hint" id="verHint" role="status"></span>
+    </div>
+    <div class="par" id="numUna" hidden>
+      <label class="par-lbl" for="unaInput">Si ya tienes parte de un álbum, pedir una a una las que faltan hasta</label>
+      <span class="num"><input type="number" id="unaInput" min="0" max="50" step="1" inputmode="numeric"> canciones</span>
+      <span class="par-hint" id="unaHint" role="status"></span>
+    </div>
+    <div class="par" id="numPausa" hidden>
+      <label class="par-lbl" for="pausaInput">Pausa entre álbumes de una discografía</label>
+      <span class="num"><input type="number" id="pausaInput" min="0" max="120" step="1" inputmode="numeric"> s</span>
+      <span class="par-hint" id="pausaHint" role="status"></span>
+    </div>
+    <div class="par" id="avisos">
+      <span class="par-lbl" id="avisosLbl">Avisos del sistema al terminar una descarga</span>
+      <div class="seg" role="group" aria-labelledby="avisosLbl" id="avisosSeg"></div>
+      <span class="par-hint" id="avisosHint" role="status"></span>
     </div>
     <div class="dd-actions"><button type="submit" class="btn">Listo</button></div>
   </form>
@@ -937,14 +970,18 @@ const Mock = (() => {
 
 const state = { artist: "", artistName: "", album: null, jobOpen: new Map(), lastFocus: null };
 
+// Estado del bot y carpeta de descargas: punto en el botón de Ajustes y detalle dentro del menú.
 async function loadConfig() {
+  let ok = false, text = "Sin conexión con el servidor";
   try {
     const c = await API.config();
-    $("#cfg").textContent = `@${c.bot} guarda en ${c.downloads_dir}`;
-  } catch (e) {
-    $("#cfg").classList.add("off");
-    $("#cfg").textContent = "Sin conexión con el servidor";
-  }
+    ok = true; text = `@${c.bot} · servidor conectado`;   // /api/config responde: el servidor está; Telegram se ve al buscar
+    $("#cfgDir").value = $("#cfgDir").title = c.downloads_dir;   // title: la ruta entera si es larga
+  } catch (e) { /* queda en rojo */ }
+  for (const el of [$("#setBtn"), $("#cfgBot")]) { el.classList.toggle("on", ok); el.classList.toggle("off", !ok); }
+  $("#cfgBot").textContent = text;
+  $("#setBtn").title = text;
+  $("#setBtn").setAttribute("aria-label", `Ajustes (${text})`);
 }
 
 async function search(ev) {
@@ -1401,6 +1438,8 @@ function toast(job, ok) {
   t.onclick = () => { setDock(true); t.remove(); };
   $("#toasts").prepend(t);
   setTimeout(() => t.remove(), ok ? 7000 : 12000);
+  sysNotify(ok ? `«${job.album}» descargado` : `Falló la descarga de «${job.album}»`,
+            ok ? doneSummary(job) : job.error || "El bot no entregó las pistas.");
 }
 /* ===== Discografía: elegir secciones, estimar y seguir el avance ===== */
 let DISCS = [], LAST_JOBS = [];
@@ -1446,6 +1485,7 @@ function discToast(dc) {
   t.onclick = () => { setDock(true); t.remove(); };
   $("#toasts").prepend(t);
   setTimeout(() => t.remove(), 12000);
+  sysNotify(`Discografía de ${dc.name} ${dc.status === "canceled" ? "cancelada" : "terminada"}`, `${discSummary(dc)}.`);
 }
 function discCardHTML(dc, jobs) {
   const jobOf = (a) => jobs.find((j) => j.id === a.job_id);
@@ -1698,6 +1738,88 @@ async function saveVer(v) {
   savingVer = false;
 }
 
+/* ===== Una a una y pausa de discografía (ajustes numéricos; solo el servidor de Node los admite) ===== */
+function setHint(el, text, cls) { el.className = "par-hint" + (cls ? " " + cls : ""); el.textContent = text; }
+const NUMS = {
+  una_a_una_max: { row: "#numUna", input: "#unaInput", hint: "#unaHint",
+    text: (n) => n === 0 ? "Siempre se pide el álbum completo (GET ALL)."
+      : `Si faltan ${n} o menos se piden una a una; si faltan más, el álbum completo (GET ALL).` },
+  pausa_discografia: { row: "#numPausa", input: "#pausaInput", hint: "#pausaHint",
+    text: (n) => n === 0 ? "Sin pausa: un álbum detrás de otro."
+      : `Espera ${n} s entre un álbum y el siguiente. Se aplica también a la que esté en curso.` },
+};
+const NUMV = {};
+let savingNum = null;
+function renderNums(s) {   // s: los ajustes que manda el servidor
+  for (const [k, c] of Object.entries(NUMS)) {
+    const has = typeof s?.[k] === "number";
+    $(c.row).hidden = !has;
+    if (!has || savingNum === k || document.activeElement === $(c.input) || s[k] === NUMV[k]) continue;
+    NUMV[k] = s[k]; $(c.input).value = s[k]; setHint($(c.hint), c.text(s[k]));
+  }
+}
+async function saveNum(k) {
+  const c = NUMS[k], el = $(c.input), hint = $(c.hint), min = Number(el.min), max = Number(el.max), n = Number(el.value);
+  if (el.value === "" || !Number.isInteger(n) || n < min || n > max) {
+    el.value = NUMV[k];
+    return setHint(hint, `Elige un número entre ${min} y ${max}.`, "err");
+  }
+  if (n === NUMV[k]) return;
+  savingNum = k; setHint(hint, "Guardando…");
+  try {
+    const s = await API.saveSettings({ [k]: n });
+    NUMV[k] = s[k]; el.value = s[k];
+    setHint(hint, s.aviso || c.text(s[k]), s.aviso ? "err" : "ok");
+  } catch (e) {
+    el.value = NUMV[k]; setHint(hint, `No se pudo cambiar: ${e.message}`, "err");
+  }
+  savingNum = null;
+}
+for (const k of Object.keys(NUMS)) {
+  const el = $(NUMS[k].input);
+  el.onchange = () => saveNum(k);
+  // Enter guarda en lugar de cerrar el menú (el formulario del diálogo lo cerraría)
+  el.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); saveNum(k); } };
+}
+
+/* ===== Avisos del sistema (Windows, macOS…) al terminar una descarga: se guardan en este navegador ===== */
+const AVISOS = { on: false };
+try { AVISOS.on = localStorage.getItem("avisos") === "1"; } catch (e) { /* sin almacenamiento: desactivados */ }
+function avisosState() {
+  if (!("Notification" in window)) return "nosoporta";
+  if (!window.isSecureContext) return "inseguro";   // p. ej. abierta por la IP de la red local, sin https
+  return Notification.permission;
+}
+function renderAvisos(note, cls) {
+  $("#avisosSeg").innerHTML = [["1", "Sí"], ["0", "No"]].map(([v, t]) =>
+    `<button type="button" data-v="${v}" aria-pressed="${(v === "1") === AVISOS.on}">${t}</button>`).join("");
+  $$("#avisosSeg button").forEach((b) => (b.onclick = () => setAvisos(b.dataset.v === "1")));
+  const def = !AVISOS.on ? "Solo los avisos dentro de la página."
+    : avisosState() === "granted" ? "Te avisa el sistema aunque la pestaña esté en segundo plano."
+    : "El navegador ya no los permite para esta página: actívalos otra vez.";
+  setHint($("#avisosHint"), note || def, cls);
+}
+async function setAvisos(on) {
+  if (on) {
+    const st = avisosState();
+    if (st === "nosoporta") return renderAvisos("Este navegador no admite avisos del sistema.", "err");
+    if (st === "inseguro") return renderAvisos("Solo funcionan abriendo la página en este equipo (http://127.0.0.1:8000) o con https.", "err");
+    if (st !== "granted" && (await Notification.requestPermission()) !== "granted")
+      return renderAvisos("El navegador los tiene bloqueados para esta página: permítelos desde el candado de la barra de direcciones.", "err");
+  }
+  AVISOS.on = on;
+  try { localStorage.setItem("avisos", on ? "1" : "0"); } catch (e) { /* sin almacenamiento: solo esta vez */ }
+  renderAvisos(on ? "Listo: te avisará el sistema al terminar cada descarga." : null, on ? "ok" : "");
+}
+// Solo con la página en segundo plano: si la estás mirando, ya ves el aviso de dentro.
+function sysNotify(title, body) {
+  if (!AVISOS.on || avisosState() !== "granted" || document.visibilityState === "visible") return;
+  try {
+    const n = new Notification(title, { body, icon: $('link[rel="icon"]').href });
+    n.onclick = () => { window.focus(); setDock(true); n.close(); };
+  } catch (e) { /* algunos navegadores solo los permiten desde un service worker */ }
+}
+
 $("#searchForm").addEventListener("submit", search);
 $("#setBtn").onclick = () => $("#setDlg").showModal();
 $$("input[name=mode]").forEach((r) => (r.onchange = setMode));
@@ -1711,11 +1833,13 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && document
 if (DEMO) $("#demoBar").hidden = false;
 loadConfig();
 renderPar();  // con SSE, el valor real llega en el primer aviso
+renderAvisos();
 var live = liveUpdates({
   onJobs: renderJobs,
   onDiscs,
   onActivity: renderActivity,
   onSettings: (s) => {  // p. ej. si lo cambiaste en otra pestaña
+    renderNums(s);
     if (!savingVer && (s.version || null) !== VER.v) { VER.v = s.version || null; renderVer(); }
     if (savingPar || (s.descargas_simultaneas === PAR.n && (s.maximo || 5) === PAR.max)) return;
     PAR.n = s.descargas_simultaneas; PAR.max = s.maximo || 5; renderPar();
