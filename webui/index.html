@@ -437,11 +437,11 @@
   <h1>¿Qué disco quieres tener hoy?</h1>
   <form class="search" id="searchForm" role="search">
     <div class="modes" role="radiogroup" aria-label="Qué buscar">
-      <label><input type="radio" name="mode" value="artista" checked> Artista o álbum</label>
+      <label><input type="radio" name="mode" value="artista" checked> Artista</label>
+      <label><input type="radio" name="mode" value="album"> Álbum</label>
       <label><input type="radio" name="mode" value="cancion"> Canción</label>
     </div>
-    <input id="artist" type="search" placeholder="Escribe un artista, p. ej. Soda Stereo" autocomplete="off" aria-label="Artista" />
-    <input id="album" type="search" placeholder="Álbum (con o sin artista)" autocomplete="off" aria-label="Álbum (opcional; también solo el álbum)" />
+    <input id="q" type="search" placeholder="Escribe un artista, p. ej. Soda Stereo" autocomplete="off" aria-label="Artista" />
     <button class="btn" id="go" type="submit">Buscar</button>
   </form>
   <div class="activity" id="activity" role="status" aria-live="polite"></div>
@@ -1135,14 +1135,16 @@ async function search(ev) {
   ev?.preventDefault();
   state.view = null; markView(null);   // se sale de Biblioteca, Para después…
   hideSheetTab();   // la ficha anterior era de otra búsqueda
-  const artist = $("#artist").value.trim();
-  if (!artist && !songMode() && $("#album").value.trim()) return searchAlbums($("#album").value.trim());
-  if (!artist) { $("#artist").focus(); return; }
-  if (songMode()) return searchSongs(artist);
+  const q = $("#q").value.trim(), mode = searchMode();
+  if (!q) { $("#q").focus(); return; }
+  if (mode === "cancion") return searchSongs(q);
+  // Álbum: «Artista - Álbum» lo abre directo; solo el título, lo busca de cualquier artista
+  const [, by, title] = (mode === "album" && q.match(/^(.+?)\s+[-–—]\s+(.+)$/)) || [];
+  if (mode === "album" && !by) return searchAlbums(q);
+  const artist = by || q;
   state.artist = artist; state.index = 0; state.query = "";
   document.body.classList.add("searched");
-  const album = $("#album").value.trim();
-  if (album) return searchAlbum(artist, album);
+  if (title) return searchAlbum(artist, title);
   $("#go").disabled = true;
   $("#results").innerHTML = `<div class="loading">${liveHTML({ head: `Buscando a «${artist}»`, step: "Pidiendo al bot los artistas con ese nombre…" })}</div>`;
   try {
@@ -1157,12 +1159,22 @@ async function search(ev) {
   } finally { $("#go").disabled = false; }
 }
 // --- Canción por título: el bot da canciones de cualquier artista; al elegir una, envía su archivo.
-const songMode = () => $("input[name=mode]:checked").value === "cancion";
+const searchMode = () => $("input[name=mode]:checked").value;
+const MODES = {
+  artista: ["Artista", "Escribe un artista, p. ej. Soda Stereo"],
+  album: ["Álbum", "Álbum, o Artista - Álbum para abrirlo directo"],
+  cancion: ["Canción", "Título de la canción (y el artista, si quieres)"],
+};
 function setMode() {
-  const song = songMode();
-  $("#album").hidden = song;
-  $("#artist").placeholder = song ? "Título de la canción (y el artista, si quieres)" : "Escribe un artista, p. ej. Soda Stereo";
-  $("#artist").setAttribute("aria-label", song ? "Canción" : "Artista");
+  const [label, hint] = MODES[searchMode()];
+  $("#q").placeholder = hint;
+  $("#q").setAttribute("aria-label", label);
+}
+// Buscar desde otra parte de la página, como si se escribiera arriba
+function searchFor(mode, text) {
+  $(`input[name=mode][value=${mode}]`).checked = true; setMode();
+  $("#q").value = text;
+  return search();
 }
 
 async function searchSongs(q) {
@@ -1261,13 +1273,13 @@ function searchAlbum(artist, album) {
   state.artistName = artist; state.sections = {}; state.index = 0;
   $("#results").innerHTML = `<div class="artist"><h2>${esc(artist)}</h2><p id="artistMeta"></p>
     <button type="button" class="disc-btn" id="allBtn">Ver todos sus álbumes</button></div>`;
-  $("#allBtn").onclick = () => { $("#album").value = ""; search(); };
+  $("#allBtn").onclick = () => searchFor("artista", artist);
   loadCovers(artist, null, [album]).then((info) => {
     if (state.artist !== artist) return;  // llegó tarde: el usuario ya buscó otra cosa
     applyAlbumMeta(info);
     if (state.album === album) { refreshFacts(); loadDetails(album).then(refreshFacts); applyCovers($("#sheet")); }
   });
-  openAlbum($("#album"), album);
+  openAlbum($("#q"), album);
 }
 
 function renderAlbums(data) {
@@ -1686,11 +1698,7 @@ function libHTML() {
 }
 document.addEventListener("click", async (e) => {
   const fill = e.target.closest("[data-fill]"), artist = e.target.closest("[data-artist]");
-  if (artist) {   // buscar al artista en el bot (como escribirlo arriba)
-    $("input[name=mode][value=artista]").checked = true; setMode();
-    $("#artist").value = artist.dataset.artist; $("#album").value = "";
-    return search();
-  }
+  if (artist) return searchFor("artista", artist.dataset.artist);   // buscar al artista en el bot
   if (!fill) return;
   fill.disabled = true; fill.textContent = "Añadiendo…";
   try { await API.download(fill.dataset.fill, fill.dataset.album); fill.textContent = "Añadido"; setDock(true); refreshJobs(); }

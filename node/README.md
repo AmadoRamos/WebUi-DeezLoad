@@ -109,10 +109,10 @@ modo inline del bot (sin el prefijo `.art`), que además de canciones devuelve �
 («Éxitos (Album)», con el artista debajo). Al elegirlo, el bot abre la ficha del álbum al momento
 (unos 12 s).
 
-- **En la web**: escribe el artista y, en el segundo campo, el álbum. Se abre su ficha con las
-  canciones y «Descargar álbum». «Ver todos sus álbumes» carga la lista completa como antes.
-  Si dejas el álbum vacío, todo funciona como siempre.
-- **Solo el álbum, sin artista**: deja el artista vacío y escribe el álbum. Sale la lista de álbumes
+- **En la web**: elige «Álbum» encima del buscador y escribe `Artista - Álbum` (un guion con
+  espacios a los lados). Se abre su ficha con las canciones y «Descargar álbum». «Ver todos sus
+  álbumes» carga la lista completa, como al buscar en modo «Artista».
+- **Solo el álbum, sin artista**: en modo «Álbum», escribe solo el título. Sale la lista de álbumes
   con ese título que encuentra el bot, de cualquier artista; al elegir uno se abre su ficha como
   arriba. Buscar es solo una consulta al bot: no envía nada al chat.
 - **Sin cambiar nada**: abrir un álbum desde la lista o descargarlo también usa la búsqueda

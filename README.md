@@ -7,7 +7,7 @@ pistas (GET ALL) y descarga los archivos a una carpeta.
 
 - **Interfaz web**: búsqueda de artistas, carátulas y datos de Deezer, descargas en paralelo con avance
   en vivo, reintentos y descarga de discografías completas (con pausa, reanudar y cancelar).
-- **Búsqueda directa de álbum**: escribe artista y álbum y se abre al momento, sin recorrer la lista
+- **Búsqueda directa de álbum**: escribe «Artista - Álbum» y se abre al momento, sin recorrer la lista
   de álbumes del artista (con muchos álbumes, de ~2 min a ~12 s).
 - **Búsqueda por título**: álbumes sin saber el artista y canciones sueltas.
 - **Sin duplicados**: las canciones que ya están en la carpeta no se vuelven a bajar, aunque el nombre
