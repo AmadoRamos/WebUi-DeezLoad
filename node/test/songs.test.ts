@@ -1,4 +1,4 @@
-/** Port de test_songs.py + comparación con Python sobre los nombres reales de tu carpeta. */
+/** Claves de canciones, también sobre los nombres reales de tu carpeta. */
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -35,7 +35,7 @@ const diff: [string, string][] = [
 for (const [a, b] of same) it(`misma canción: ${a} = ${b}`, () => assert.equal(k(a), k(b)));
 for (const [a, b] of diff) it(`distinta: ${a} ≠ ${b}`, () => assert.notEqual(k(a), k(b)));
 
-it("los 205 nombres reales de tu carpeta dan las mismas claves que Python", () => {
+it("los 205 nombres reales de tu carpeta dan las claves esperadas", () => {
   const ref: [string, string | null, string | null][] = JSON.parse(readFileSync(new URL("./fixtures/nombres.json", import.meta.url), "utf8"));
   assert.equal(ref.length, 205);
   for (const [name, artist, title] of ref) {

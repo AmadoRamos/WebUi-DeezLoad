@@ -1,4 +1,4 @@
-/** Port de test_disco.py: discografía en orden estricto, con pausa, cancelar y reintentos. */
+/** Discografía en orden estricto, con pausa, cancelar y reintentos. */
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -96,7 +96,7 @@ it("cancelar: el álbum en curso termina, el resto se cancela", async () => {
 it("pausar antes de empezar y cancelar: no descarga nada", async () => {
   const { d, done } = start(["P1", "P2"]);
   d.pause();
-  assert.equal(d.status, "paused");      // aún no había empezado (como en Python)
+  assert.equal(d.status, "paused");      // aún no había empezado
   await sleep(50);
   assert.equal(events.length, 0);
   d.cancel();

@@ -2,8 +2,7 @@
  * Conversación con @deezload2bot: buscar artistas, leer la lista de álbumes (con sus páginas),
  * abrir álbumes, leer canciones y pedir las pistas (GET ALL).
  *
- * Es el port de deezload_mcp.py: mismas reglas y mismos resultados. No sabe nada de Telegram
- * directamente; habla con un `Transport` (GramJS en uso real, un bot falso en las pruebas).
+ * No sabe nada de Telegram directamente; habla con un `Transport` (GramJS en uso real, un bot falso en las pruebas).
  */
 import type { Config } from "./config.js";
 import { report } from "./progress.js";
@@ -27,10 +26,9 @@ const NAV_WORDS: Record<string, "next" | "prev" | "back"> = {
 // Palabras que también son títulos habituales ("Más" de Alejandro Sanz, "Volver"...):
 // solo cuentan como navegación si van con una flecha o símbolo.
 const NAV_WORDS_WITH_SYMBOL: Record<string, "next" | "back"> = { "más": "next", mas: "next", more: "next", volver: "back" };
-// Python: [^\w]*([^\W\d_]+\.?)?[^\w]*  (con \w de Unicode)
 const NAV_SHAPE_RE = /^[^\p{L}\p{N}_]*(\p{L}+\.?)?[^\p{L}\p{N}_]*$/u;
 
-const cpLen = (s: string) => [...s].length;  // longitud en caracteres, como len() de Python
+const cpLen = (s: string) => [...s].length;  // longitud en caracteres (no en unidades UTF-16)
 
 export function navKind(text: string | undefined): "next" | "prev" | "back" | null {
   const t = (text || "").trim();
@@ -53,7 +51,6 @@ export const SKIP_RE = /^[^\p{L}\p{N}]*(get all|descargar todo|download all)\b/i
 export const GET_ALL_RE = /(get all|descargar todo|download all)/i;
 export const TRACKS_RE = /(track|canciones|songs|tracklist)/i;
 export const TRACK_RE = /^\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*\|\s*(.+?)\s*$/;
-// Python: ^\W*\s*([A-Za-zÁÉÍÓÚáéíóúñ ]+?)\s*:\s*(.+)$
 export const HEADER_RE = /^[^\p{L}\p{N}_]*\s*([A-Za-zÁÉÍÓÚáéíóúñ ]+?)\s*:\s*(.+)$/u;
 export const TOTAL_TRACKS_RE = /total tracks\s*:\s*(\d+)/i;
 

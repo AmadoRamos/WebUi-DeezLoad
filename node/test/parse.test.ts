@@ -6,7 +6,7 @@ import bigInt from "big-integer";
 import { navKind, parseAlbum, parseSections, safeName } from "../src/bot.js";
 import { toMsg } from "../src/telegram.js";
 
-it("navKind: igual que en Python", () => {
+it("navKind", () => {
   const cases: Record<string, string | null> = {
     "Quiero Más": null, "Más": null, "Volver": null, "Back in Black": null, "Next to Me": null, "Independiente": null,
     "More": null, "1/3": null, "GET ALL": null, "Ant": "prev",
@@ -23,7 +23,7 @@ it("parseSections: secciones con separador, sin navegación ni contadores", () =
   const p1 = page([["SEP7IMO DIA"], ["Gira Me Verás Volver"], ["━━━━", "Singles and EPs", "━━━━"], ["En el Séptimo Día"], ["« Prev", "1/2", "Next »"], ["🔙 BACK"]]);
   const p2 = page([["Quiero Más"], ["GET ALL"], ["0:03:04 | Soda Stereo - Signos"]]);
   assert.deepEqual(parseSections([p1, p2]), { Albums: ["SEP7IMO DIA", "Gira Me Verás Volver"], "Singles and EPs": ["En el Séptimo Día", "Quiero Más"] });
-  // Igual que Python: un solo botón "━━ Singles and EPs ━━" no es separador (tiene letras)
+  // Un solo botón "━━ Singles and EPs ━━" no es separador (tiene letras)
   assert.deepEqual(parseSections([page([["A"], ["━━ Singles and EPs ━━"], ["B"]])]), { Albums: ["A", "━━ Singles and EPs ━━", "B"] });
 });
 
@@ -36,7 +36,7 @@ it("parseAlbum: ficha y canciones como las del bot real", () => {
   assert.equal(d.aviso, "El bot indica 3 pistas y se leyeron 2.");
 });
 
-it("safeName: como _safe_name de Python", () => {
+it("safeName: cambia los caracteres no válidos en Windows", () => {
   assert.equal(safeName('Soda Stereo - ¿Por qué?: "x".flac', "f"), "Soda Stereo - ¿Por qué__ _x_.flac");
   assert.equal(safeName("  ", "fallback.bin"), "fallback.bin");
 });

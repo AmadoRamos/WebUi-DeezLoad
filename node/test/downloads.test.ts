@@ -1,4 +1,4 @@
-/** Port de test_paralelo.py: descargas en secuencia / simultáneas con un Telegram falso. */
+/** Descargas en secuencia / simultáneas con un Telegram falso. */
 import assert from "node:assert/strict";
 import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -222,7 +222,7 @@ describe("ajustes", () => {
     writeFileSync(settings, '{"descargas_simultaneas": 7}'); assert.equal(loadSettings(settings).descargas_simultaneas, 1);
   });
 
-  it("lee el ajuste que dejó la versión en Python", () => {
+  it("lee un ajustes.json con otro formato", () => {
     writeFileSync(settings, '{\n  "descargas_simultaneas": 3\n}');
     const d = new Downloader(files as unknown as Transport, fakeBot, dir, settings);
     assert.equal(d.slots.limit, 3);

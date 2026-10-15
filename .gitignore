@@ -8,18 +8,12 @@ downloads/
 
 # Dependencias y entornos
 node/node_modules/
-python/.venv/
-venv/
-__pycache__/
-*.pyc
 
 # Logs, salidas de prueba y respaldos
 logs/
 *.log
-python/salida.txt
 *.bak
 node/albums_node.json
-node/albums_python.json
 albums_*.json
 node/probar_alb.bat
 

@@ -1000,7 +1000,7 @@ async function search(ev) {
   try {
     // Si un único artista se llama exactamente así, ese; si no, que elija el usuario.
     let found = [];
-    try { found = await API.artists(artist); } catch (e) { /* sin la lista (p. ej. servidor de Python): el primero, como antes */ }
+    try { found = await API.artists(artist); } catch (e) { /* sin la lista: el primero */ }
     if (state.artist !== artist) return;
     const same = found.filter((a) => plainName(a.nombre) === plainName(artist));
     if (same.length === 1) return await loadArtist(same[0].index);
@@ -1705,7 +1705,7 @@ async function savePar(n) {
 }
 
 /* ===== Con qué versión quedarse si hay explícita y limpia (solo el servidor de Node lo admite) ===== */
-const VER = { v: null };   // null: el servidor no lo admite (versión en Python): no se muestra
+const VER = { v: null };   // null: el servidor no lo admite: no se muestra
 const VER_OPTS = [["explicita", "Explícita"], ["limpia", "Limpia"], ["cualquiera", "La que tenga"]];
 const VER_HINT = {
   explicita: "Si tienes la limpia, al descargar se baja la explícita y la sustituye.",

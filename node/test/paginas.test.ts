@@ -1,4 +1,4 @@
-/** Port de test_paginas.py: lista de álbumes paginada, en los dos modos y con 4 estilos de flechas. */
+/** Lista de álbumes paginada, en los dos modos y con 4 estilos de flechas. */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { Bot, parseSections } from "../src/bot.js";

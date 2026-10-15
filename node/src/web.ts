@@ -1,8 +1,7 @@
 /**
- * Arranca el servidor web en Node (mismas rutas e interfaz que webapp.py):
+ * Arranca el servidor web:
  *   npm run web                                  # http://127.0.0.1:8000
  *   npm run web -- --host 0.0.0.0 --port 8080
- * No lo abras a la vez que el servidor de Python: los dos hablarían con el bot.
  */
 import { Bot } from "./bot.js";
 import { cfg } from "./config.js";
@@ -25,7 +24,7 @@ async function main(argv: string[]) {
   catch (e) {
     const code = (e as NodeJS.ErrnoException).code;
     console.error(code === "EADDRINUSE"
-      ? `El puerto ${port} ya está en uso. ¿Está abierto el servidor de Python (run_web.bat)? Ciérralo o usa --port.`
+      ? `El puerto ${port} ya está en uso. ¿Hay otra copia abierta? Ciérrala o usa --port.`
       : `No se pudo abrir el servidor: ${(e as Error).message}`);
     process.exit(1);
   }

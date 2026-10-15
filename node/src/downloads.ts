@@ -1,8 +1,8 @@
 /**
- * Descargas (port de la parte de descargas de webapp.py):
+ * Descargas:
  *  - turno único con el bot (buscar, abrir, GET ALL van de uno en uno) con registro de actividad;
  *  - cupos de descarga de archivos (1 = en secuencia, hasta 5), ajustables en caliente y por orden
- *    de pedido; se guardan en ajustes.json (el mismo archivo que usa la versión en Python);
+ *    de pedido; se guardan en ajustes.json;
  *  - cada pista se baja a "nombre.part" y se renombra al terminar;
  *  - si la canción ya está en la carpeta (aunque el nombre no sea idéntico), no se vuelve a bajar;
  *  - si una pista falla, las demás siguen; un álbum que falló se puede reintentar.

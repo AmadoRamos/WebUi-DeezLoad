@@ -1,5 +1,5 @@
 /**
- * Carátulas y datos de álbumes desde la API pública de Deezer (port de covers.py; no necesita clave).
+ * Carátulas y datos de álbumes desde la API pública de Deezer (no necesita clave).
  *
  * El bot muestra los datos de Deezer, así que los títulos de sus álbumes coinciden con los de
  * Deezer. Para no confundir artistas homónimos se elige el que tenga el mismo nombre y el número

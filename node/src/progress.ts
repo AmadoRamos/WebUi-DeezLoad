@@ -1,5 +1,5 @@
 /**
- * Avisos de progreso. Equivale al contextvars de Python: la interfaz web registra una función
+ * Avisos de progreso (con AsyncLocalStorage): la interfaz web registra una función
  * para saber en qué paso va cada operación con el bot. En la CLI nadie escucha y no hace nada.
  */
 import { AsyncLocalStorage } from "node:async_hooks";

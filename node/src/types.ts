@@ -1,4 +1,4 @@
-/** Formas de datos comunes. Siguen las de la versión en Python para que la API no cambie. */
+/** Formas de datos comunes (las que devuelve la API). */
 
 export type ButtonKind = "callback" | "switch_inline" | "url" | "other";
 
@@ -37,7 +37,7 @@ export interface Msg {
   raw?: unknown;          // el mensaje original de GramJS (para descargarlo en la fase 2)
 }
 
-/** Lo que se devuelve hacia fuera (CLI, web, MCP): igual que `snapshot` en Python. */
+/** Lo que se devuelve hacia fuera (CLI y web). */
 export interface Snapshot {
   message_id: number;
   text: string;

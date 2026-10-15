@@ -1,10 +1,10 @@
-/** Carátulas de Deezer (port de covers.py) con un Deezer falso. */
+/** Carátulas de Deezer con un Deezer falso. */
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import { base, Covers, image, norm } from "../src/covers.js";
 import { fakeDeezer } from "./support/stub-bot.js";
 
-it("normaliza títulos como Python", () => {
+it("normaliza títulos", () => {
   assert.equal(norm("Me Verás Volver (Hits & Más)"), "me veras volver hits mas");
   assert.equal(base("De Música Ligera [Remastered 2007]"), "de musica ligera");
   assert.equal(norm(null), "");

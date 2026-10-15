@@ -1,6 +1,6 @@
 /**
- * Reconocer si una canción ya está en la carpeta aunque el nombre no sea idéntico
- * (port de songs.py). Los archivos se llaman "Artista - Título.ext":
+ * Reconocer si una canción ya está en la carpeta aunque el nombre no sea idéntico.
+ * Los archivos se llaman "Artista - Título.ext":
  *   Callejon Sin Salida  = Callejón Sin Salida               (tildes)
  *   Demasiado Nina       = Demasiado Niña                    (ñ)
  *   Seguire Buscandola   = Seguire Buscandola (Album Version) (etiqueta de versión)

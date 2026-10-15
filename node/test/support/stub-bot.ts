@@ -1,5 +1,4 @@
-/** Doble del bot para probar el servidor (mismo comportamiento que el doble de Python de las
- *  pruebas e2e: formato de datos y demoras parecidos al bot real, sin Telegram). */
+/** Doble del bot para probar el servidor (formato de datos y demoras parecidos al bot real, sin Telegram). */
 import { writeFileSync } from "node:fs";
 import { report } from "../../src/bot.js";
 import type { Getter } from "../../src/covers.js";
@@ -106,7 +105,7 @@ const ALBUMS = [
   { title: "Lo Esencial", ...U("x", { id: 79, cover_medium: "https://e-cdns-images.dzcdn.net/images/cover//250x250-000000-80-0-0.jpg", cover_big: null, release_date: "2007-04-24", record_type: "compile" }) },
   { title: "En el Séptimo Día (Remastered)", ...U("single", { id: 80, release_date: "2017-02-09", record_type: "single" }) },
 ];
-/** Deezer falso (el mismo que usa la prueba de Python). */
+/** Deezer falso. */
 export const fakeDeezer: Getter = async (path, params) => {
   if (path === "/search/artist") {
     if (params?.q === "Nadie") throw new Error("sin red");

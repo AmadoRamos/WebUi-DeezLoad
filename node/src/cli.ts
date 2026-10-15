@@ -1,5 +1,5 @@
 /**
- * Línea de comandos (mismos comandos que deezload_mcp.py, para comparar resultados):
+ * Línea de comandos:
  *   npm run cli -- login                               1ª vez: inicia sesión (teléfono + código)
  *   npm run cli -- albums "Soda Stereo" [n] [--raw]    álbumes por sección (n = artista elegido)
  *   npm run cli -- tracks "Soda Stereo" "Signos" [n]   canciones de un álbum

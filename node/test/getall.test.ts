@@ -1,4 +1,4 @@
-/** Port de test_getall.py: espera de pistas tras GET ALL con un bot que tarda y hace pausas. */
+/** Espera de pistas tras GET ALL con un bot que tarda y hace pausas. */
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import { Bot } from "../src/bot.js";

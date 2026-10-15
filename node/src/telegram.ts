@@ -2,7 +2,7 @@
  * Conexión con Telegram usando GramJS (paquete `telegram`), con tu cuenta.
  * Traduce los mensajes de GramJS al formato común (`Msg`) y ofrece lo que la lógica necesita.
  *
- * La sesión es PROPIA de Node (archivo deezload_node.session). No reutiliza la de Telethon:
+ * La sesión se guarda en deezload_node.session. No la uses en otro programa a la vez:
  * si dos programas usan la misma clave a la vez, Telegram puede invalidarla.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";

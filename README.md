@@ -1,6 +1,6 @@
 # WebUi-DeezLoad
 
-Interfaz web y servidor MCP para explorar artistas y descargar álbumes a través del bot de Telegram
+Interfaz web (Node.js) para explorar artistas y descargar álbumes a través del bot de Telegram
 [@deezload2bot](https://t.me/deezload2bot). El proyecto habla con el bot usando **tu propia cuenta de
 Telegram** (no es un bot): busca al artista, recorre su lista de álbumes, abre cada álbum, pide las
 pistas (GET ALL) y descarga los archivos a una carpeta.
@@ -8,38 +8,29 @@ pistas (GET ALL) y descarga los archivos a una carpeta.
 - **Interfaz web**: búsqueda de artistas, carátulas y datos de Deezer, descargas en paralelo con avance
   en vivo, reintentos y descarga de discografías completas (con pausa, reanudar y cancelar).
 - **Búsqueda directa de álbum**: escribe artista y álbum y se abre al momento, sin recorrer la lista
-  de álbumes del artista (con muchos álbumes, de ~2 min a ~12 s; versión Node).
-- **Búsqueda por título**: álbumes sin saber el artista y canciones sueltas (versión Node).
+  de álbumes del artista (con muchos álbumes, de ~2 min a ~12 s).
+- **Búsqueda por título**: álbumes sin saber el artista y canciones sueltas.
 - **Sin duplicados**: las canciones que ya están en la carpeta no se vuelven a bajar, aunque el nombre
   cambie (tildes, ñ, "(Album Version)", signos).
 - **Resistente a un bot lento**: reconoce qué está mostrando el bot y se recupera solo cuando tarda o
-  responde otra cosa (versión Node).
-- **Servidor MCP** para usarlo desde Claude Desktop (versión Python).
+  responde otra cosa.
 
 > Proyecto personal. Úsalo solo con música que tengas derecho a descargar.
 
-## Dos versiones
-
-| Carpeta   | Versión                                  | Servidor web                        | Sesión de Telegram            |
-|-----------|------------------------------------------|-------------------------------------|-------------------------------|
-| `python/` | Original (Telethon + FastAPI), con MCP   | `python/run_web.bat`                | `python/deezload.session`     |
-| `node/`   | Nueva (GramJS + Node.js ≥ 20), sin MCP todavía | `node/web.bat` o `npm run web` | `node/deezload_node.session`  |
-
-Las dos comparten lo que está en la raíz del repo:
+## Estructura
 
 ```
 .
 ├── .env            credenciales y tiempos (se crea a partir de env.example; no se sube)
 ├── env.example     plantilla del .env
-├── ajustes.json    cuántas descargas a la vez
+├── ajustes.json    ajustes de la interfaz (descargas a la vez, versión, pausas…)
 ├── downloads/      la música (no se sube)
 ├── webui/          la interfaz web (index.html)
-├── python/         versión Python + servidor MCP
-└── node/           versión Node.js (detalles en node/README.md)
+└── node/           servidor y bot en Node.js + GramJS (detalles en node/README.md)
 ```
 
-**No abras las dos versiones a la vez**: hablarían con el bot al mismo tiempo. Las dos usan el puerto
-8000; la de Node avisa si está ocupado.
+**No abras dos copias a la vez**: hablarían con el bot al mismo tiempo. El servidor usa el puerto
+8000 y avisa si está ocupado.
 
 ## Configuración
 
@@ -52,15 +43,14 @@ Las dos comparten lo que está en la raíz del repo:
 | `TG_API_HASH`    | API hash de Telegram                                                  | —                 |
 | `DEEZ_BOT`       | Bot con el que se habla                                               | `deezload2bot`    |
 | `DOWNLOADS_DIR`  | Carpeta de descargas (relativa a la raíz si no es absoluta)           | `downloads`       |
-| `NODE_SESSION`   | Archivo de sesión de la versión Node                                  | `deezload_node.session` |
-| `TG_SESSION`     | Nombre de la sesión de la versión Python                              | `deezload`        |
+| `NODE_SESSION`   | Archivo de sesión de Telegram (en `node/`)                            | `deezload_node.session` |
 | `DISC_PAUSE`     | Segundos de pausa entre álbumes de una discografía                    | `5`               |
 
 El resto de tiempos y reintentos (`QUIET_SECONDS`, `MAX_WAIT`, `FILES_WAIT`, `BOT_RETRIES`,
 `SLOW_WAIT`, `FLOOD_MAX_WAIT`…) están explicados en `env.example`.
 
 `ajustes.json` guarda los ajustes de **⚙ Ajustes** (arriba, junto al logo), que se cambian desde la
-interfaz y se aplican al momento: cuántas descargas a la vez y, en la versión Node, con qué versión
+interfaz y se aplican al momento: cuántas descargas a la vez, con qué versión
 quedarse si una canción es explícita y limpia (`explicita`, `limpia` o `cualquiera`), hasta cuántas
 canciones que faltan se piden una a una (`una_a_una_max`; por defecto `UNA_A_UNA_MAX`) y la pausa entre
 álbumes de una discografía (`pausa_discografia`; por defecto `DISC_PAUSE`):
@@ -78,12 +68,10 @@ en el `.env`). El punto del botón **⚙ Ajustes** indica si la página llega al
 rojo si no.
 
 > **Seguridad**: el `.env` y los archivos `*.session` dan acceso a tu cuenta de Telegram. Trátalos
-> como contraseñas; ya están en `.gitignore`. Cada versión usa su propia sesión: usar la misma en dos
-> programas a la vez puede hacer que Telegram la invalide.
+> como contraseñas; ya están en `.gitignore`. No uses la misma sesión en dos programas a la vez:
+> Telegram puede invalidarla.
 
 ## Uso en Windows
-
-### Node.js (recomendada)
 
 1. Instala Node.js 20 o superior (LTS) desde <https://nodejs.org>.
 2. `node\setup.bat` — instala las dependencias.
@@ -100,25 +88,7 @@ npm run web -- --host 0.0.0.0 --port 8080
 npm test                      # pruebas automáticas, sin Telegram
 ```
 
-### Python
-
-1. `python\setup_venv.bat` — crea el entorno, instala dependencias e inicia sesión en Telegram.
-2. `python\run_web.bat` y abre <http://127.0.0.1:8000>.
-
-Servidor MCP en Claude Desktop (`claude_desktop_config.json`), ajustando la ruta a donde clonaste:
-
-```json
-"deezload": {
-  "command": "D:\\musica\\telegram_mcp\\python\\.venv\\Scripts\\python.exe",
-  "args": ["D:\\musica\\telegram_mcp\\python\\deezload_mcp.py"]
-}
-```
-
-Herramientas que expone: `deezload_albums`, `deezload_album_tracks`, `deezload_discography`,
-`deezload_get_all`, `deezload_send`, `deezload_click`, `deezload_all_pages`, `deezload_inline`,
-`deezload_inline_pick` y la descarga de álbumes.
-
-## Despliegue en un servidor Linux (versión Node)
+## Despliegue en un servidor Linux
 
 Probado con Debian/Ubuntu (por ejemplo, un contenedor LXC en Proxmox). Los comandos están escritos
 para `root`; con otro usuario, antepón `sudo`.
@@ -250,5 +220,5 @@ pm2 restart deezload          # o: systemctl restart deezload
 
 - Conversación con el bot: `node/logs/bot.log` (`BOT_TRACE=0` en el `.env` lo desactiva).
 - `npm: command not found`: falta instalar Node.js (paso 1).
-- `El puerto 8000 ya está en uso`: ya hay otra copia corriendo (PM2, systemd o la versión Python).
+- `El puerto 8000 ya está en uso`: ya hay otra copia corriendo (PM2, systemd o `web.bat`).
 - Si Telegram cierra la sesión: detén el servicio, vuelve a ejecutar `npm run cli -- login` y arráncalo de nuevo.

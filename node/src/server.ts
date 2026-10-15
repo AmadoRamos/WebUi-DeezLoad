@@ -1,5 +1,5 @@
 /**
- * Servidor web (port de webapp.py): mismas rutas, mismas respuestas y la misma interfaz (webui).
+ * Servidor web: rutas de la API y la interfaz (webui).
  *
  * Se arranca con `npm run web` (ver web.ts).
  * Sin dependencias extra: usa node:http. La conexión con Telegram se abre la primera vez que
@@ -37,7 +37,7 @@ class HttpError extends Error {
 }
 
 // ------------------------------------------------- Validación de entradas ---
-// Mismas reglas que los modelos de FastAPI/pydantic de webapp.py (con mensajes en español).
+// Con mensajes en español.
 type Body = Record<string, unknown>;
 const bad = (msg: string) => new HttpError(422, msg);
 

@@ -1,5 +1,5 @@
 /**
- * Descarga de una discografía (port de la clase Discography de webapp.py): los álbumes elegidos
+ * Descarga de una discografía: los álbumes elegidos
  * de un artista, de uno en uno y en orden estricto. Si un álbum falla se sigue con el siguiente
  * y se reintenta una vez al final. Se puede pausar, reanudar y cancelar entre álbumes.
  * Una discografía a la vez; las demás esperan su turno.
