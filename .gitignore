@@ -30,3 +30,4 @@ node/probar_alb.bat
 Thumbs.db
 desktop.ini
 .DS_Store
+node/ecosystem.config.cjs

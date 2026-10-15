@@ -30,6 +30,7 @@ pistas (GET ALL) y descarga los archivos a una carpeta.
 .
 ├── .env            credenciales y tiempos (se crea a partir de env.example; no se sube)
 ├── env.example     plantilla del .env
+├── deploy.sh       instala o actualiza en un servidor Linux (PM2)
 ├── ajustes.json    ajustes de la interfaz (descargas a la vez, versión, pausas…)
 ├── historial.json  descargas y discografías (se crea solo; no se sube)
 ├── deseos.json     lo apuntado «para después» (se crea solo; no se sube)
@@ -109,6 +110,29 @@ para `root`; con otro usuario, antepón `sudo`.
 > **Importante**: la interfaz web **no pide usuario ni contraseña**. Quien llegue a ella puede usar tu
 > cuenta de Telegram. Úsala solo en tu red local (sin abrir el puerto en el router), por una VPN como
 > Tailscale o detrás de un proxy con contraseña (ver más abajo).
+
+### Con el script (recomendado)
+
+`deploy.sh` hace los pasos 1, 2, 3a y 5 de abajo: instala Node.js y PM2 si faltan, descarga o
+actualiza el código en `/opt/WebUi-DeezLoad`, instala las dependencias, crea el `.env`, pide el inicio
+de sesión en Telegram la primera vez y reinicia la app en PM2 (`deezload`). Si el proceso aún no
+existe, crea `node/ecosystem.config.cjs` (si no lo tienes ya) y el arranque automático. Ejecútalo con
+el mismo usuario con el que usas PM2.
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/AmadoRamos/WebUi-DeezLoad/main/deploy.sh)
+```
+
+La primera vez se para tras crear el `.env`: rellénalo (`nano /opt/WebUi-DeezLoad/.env`) y vuelve a
+ejecutarlo. Para actualizar más adelante, `bash /opt/WebUi-DeezLoad/deploy.sh`. Se cambian con
+variables `DIR` y `BRANCH`, y, solo al crear el proceso, `PORT` y `HOST` (por defecto `0.0.0.0`; usa
+`HOST=127.0.0.1` detrás de un proxy). Después, el puerto se cambia en `ecosystem.config.cjs`.
+
+```bash
+HOST=127.0.0.1 PORT=8080 bash /opt/WebUi-DeezLoad/deploy.sh
+```
+
+Si prefieres systemd o hacerlo a mano, sigue los pasos.
 
 ### 1. Node.js y el código
 
