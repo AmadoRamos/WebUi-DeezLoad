@@ -47,7 +47,11 @@
                               .demo { margin: 0 16px; } .search input { padding: 13px 16px; font-size: 16px; }
                               .btn { padding: 12px 18px; } }
 
-  #results { padding: 0 0 20px; }
+  #results, #view { padding: 0 0 20px; }
+  /* Biblioteca, Para después…: sin el buscador ni sus resultados (siguen ahí al volver a «Buscar») */
+  #view, .in-view .hero h1, .in-view .search, .in-view #results, .in-view #sheetTab { display: none; }
+  .in-view #view { display: block; }
+  .in-view .hero { padding-top: 0; padding-bottom: 0; }
   .artist { padding: 22px 32px 0; display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
   .artist h2 { margin: 0; font: 900 clamp(32px, 6vw, 72px)/.95 var(--display); letter-spacing: -.04em; white-space: pre-line; }
   .artist p { margin: 0; color: var(--dim); }
@@ -424,6 +428,7 @@
 <div class="bar-top">
   <a class="mark" href="./">deez<i>load</i></a>
   <nav class="views" aria-label="Secciones">
+    <button type="button" data-view="buscar" aria-current="true">Buscar</button>
     <button type="button" data-view="biblioteca">Biblioteca</button>
     <button type="button" data-view="deseos">Para después <span class="count" id="cntDeseos" hidden></span></button>
     <button type="button" data-view="novedades">Novedades <span class="count" id="cntNovedades" hidden></span></button>
@@ -448,6 +453,7 @@
 </section>
 
 <main id="results" aria-live="polite"></main>
+<main id="view" aria-live="polite"></main>
 
 <div class="scrim" id="scrim"></div>
 <button type="button" class="sheet-tab" id="sheetTab" hidden></button>
@@ -1133,7 +1139,7 @@ async function loadConfig() {
 
 async function search(ev) {
   ev?.preventDefault();
-  state.view = null; markView(null);   // se sale de Biblioteca, Para después…
+  showView("buscar");   // también al buscar desde la biblioteca
   hideSheetTab();   // la ficha anterior era de otra búsqueda
   const q = $("#q").value.trim(), mode = searchMode();
   if (!q) { $("#q").focus(); return; }
@@ -1601,16 +1607,16 @@ let FOLLOW = { artistas: [], novedades: [], revisado: 0 }, LIB = [], firstCounts
 const VIEWS = { biblioteca: () => renderLibrary(), deseos: () => renderWishes(), novedades: () => renderReleases(), importar: () => renderImport() };
 
 function markView(name) { $$(".views button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.view === name))); }
+// «buscar» es el buscador y sus resultados; las demás se pintan en #view sin tocarlos
 function showView(name) {
-  state.view = name; state.artist = ""; state.query = "";   // lo que llegue tarde de otra búsqueda ya no se muestra
-  hideSheetTab();
-  document.body.classList.add("searched");
+  state.view = name;
   markView(name);
-  VIEWS[name]();
+  document.body.classList.toggle("in-view", name !== "buscar");
+  VIEWS[name]?.();
 }
 const inView = (name) => state.view === name;
-function viewError(name, what, e) { if (inView(name)) $("#results").innerHTML = `<p class="error">No se pudo ${what}: ${esc(e.message)}</p>`; }
-const viewLoading = (text) => { $("#results").innerHTML = `<div class="loading"><span class="spin"></span>${esc(text)}</div>`; };
+function viewError(name, what, e) { if (inView(name)) $("#view").innerHTML = `<p class="error">No se pudo ${what}: ${esc(e.message)}</p>`; }
+const viewLoading = (text) => { $("#view").innerHTML = `<div class="loading"><span class="spin"></span>${esc(text)}</div>`; };
 function setCount(sel, n) { const el = $(sel); el.textContent = n; el.hidden = !n; }
 function setNote(el, text, err = false) { if (el) { el.className = "view-note" + (err ? " err" : ""); el.textContent = text; } }
 
@@ -1648,7 +1654,7 @@ async function renderLibrary() {
   const songs = LIB.reduce((a, x) => a + x.canciones, 0), size = LIB.reduce((a, x) => a + x.tamano, 0);
   const inc = LIB.flatMap((a) => a.albumes.filter((al) => al.faltan).map((al) => ({ artista: a.artista, album: al.album })));
   const unknown = LIB.some((a) => a.albumes.some((al) => al.album && !al.total));
-  $("#results").innerHTML = `<div class="artist"><h2>Tu biblioteca</h2><p>${LIB.length
+  $("#view").innerHTML = `<div class="artist"><h2>Tu biblioteca</h2><p>${LIB.length
       ? `${plural(LIB.length, "artista", "artistas")} · ${plural(songs, "canción", "canciones")} · ${fmtBytes(size)}`
       : "Todavía no hay música en tu carpeta de descargas."}</p></div>
     ${LIB.length ? `<div class="view-tools">
@@ -1712,7 +1718,7 @@ async function renderWishes() {
   if (!inView("deseos")) return;
   const h = PLANS.deseos_hora ?? -1;
   const when = h >= 0 ? `Se descargan solos cada día a las ${h}:00 (en Ajustes).` : "Puedes elegir en Ajustes una hora para que se descarguen solos.";
-  $("#results").innerHTML = `<div class="artist"><h2>Para después</h2><p>${items.length ? `${plural(items.length, "apuntado", "apuntados")}. ${when}` : "No hay nada apuntado."}</p>
+  $("#view").innerHTML = `<div class="artist"><h2>Para después</h2><p>${items.length ? `${plural(items.length, "apuntado", "apuntados")}. ${when}` : "No hay nada apuntado."}</p>
     ${items.length > 1 ? `<button type="button" class="disc-btn" id="wishAll">Descargar todo</button>` : ""}</div>
     ${items.length ? `<ul class="songs">${items.map((w) => `<li><div><b>${esc(w.titulo)}</b>
       <span>${esc([w.tipo === "album" ? "Álbum" : "Canción", w.artista, w.album].filter(Boolean).join(" · "))}</span></div>
@@ -1773,7 +1779,7 @@ async function renderReleases() {
   if (!inView("novedades")) return;
   const { artistas, novedades, revisado } = FOLLOW;
   const last = revisado ? ` Última búsqueda: ${new Date(revisado * 1000).toLocaleString("es", { dateStyle: "medium", timeStyle: "short" })}.` : "";
-  $("#results").innerHTML = `<div class="artist"><h2>Novedades</h2><p>${artistas.length
+  $("#view").innerHTML = `<div class="artist"><h2>Novedades</h2><p>${artistas.length
       ? `Discos nuevos de los artistas que sigues. Se busca cada 12 horas.${last}` : "Todavía no sigues a ningún artista."}</p>
     ${artistas.length ? `<button type="button" class="disc-btn" id="relCheck">Buscar ahora</button>` : ""}
     ${novedades.length > 1 ? `<button type="button" class="disc-btn" id="relAll">Descargar todas</button>` : ""}</div>
@@ -1815,7 +1821,7 @@ async function releaseAction(accion, ids, b) {
 
 // --- Importar una lista de canciones (texto pegado o un archivo .csv / .txt).
 function renderImport() {
-  $("#results").innerHTML = `<div class="artist"><h2>Importar una lista</h2>
+  $("#view").innerHTML = `<div class="artist"><h2>Importar una lista</h2>
     <p>Pega canciones, una por línea como «Artista - Título», o un CSV exportado de Spotify (por ejemplo con Exportify). Las que ya tienes se saltan.</p></div>
     <form class="imp" id="impForm">
       <textarea id="impText" aria-label="Lista de canciones" placeholder="Soda Stereo - De Música Ligera&#10;Charly García - Demoliendo Hoteles">${esc(state.impText || "")}</textarea>
