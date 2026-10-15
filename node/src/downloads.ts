@@ -22,14 +22,19 @@ export const MAX_PARALLEL = 5;
  *  ("cualquiera": la que ya tengas, sin volver a bajarla). */
 export const VERSIONS = ["cualquiera", "explicita", "limpia"] as const;
 export type Version = (typeof VERSIONS)[number];
+/** Qué hacer con un disco nuevo de un artista que sigues. */
+export const ON_RELEASE = ["avisar", "descargar"] as const;
+export type OnRelease = (typeof ON_RELEASE)[number];
 export interface Settings {
   descargas_simultaneas: number;
   version: Version;
   una_a_una_max: number;       // álbum a medias: hasta cuántas que faltan se piden una a una (si no, GET ALL)
   pausa_discografia: number;   // segundos de pausa entre álbumes de una discografía
+  deseos_hora: number;         // hora (0-23) a la que se descarga «para después»; -1: solo a mano
+  novedades: OnRelease;
 }
 /** Límites de los ajustes numéricos que se cambian desde la interfaz. */
-export const LIMITS = { una_a_una_max: [0, 50], pausa_discografia: [0, 120] } as const;
+export const LIMITS = { una_a_una_max: [0, 50], pausa_discografia: [0, 120], deseos_hora: [-1, 23] } as const;
 export type NumberSetting = keyof typeof LIMITS;
 
 /** Lee ajustes.json. Lo que falte o no valga toma el valor por defecto (el del .env). */
@@ -42,6 +47,8 @@ export function loadSettings(file: string, defaults: Partial<Pick<Settings, Numb
     version: VERSIONS.includes(data.version as Version) ? (data.version as Version) : "cualquiera",
     una_a_una_max: inRange(data.una_a_una_max, "una_a_una_max") ?? defaults.una_a_una_max ?? cfg.oneByOneMax,
     pausa_discografia: inRange(data.pausa_discografia, "pausa_discografia") ?? defaults.pausa_discografia ?? cfg.discPause,
+    deseos_hora: inRange(data.deseos_hora, "deseos_hora") ?? -1,
+    novedades: ON_RELEASE.includes(data.novedades as OnRelease) ? (data.novedades as OnRelease) : "avisar",
   };
 }
 
@@ -145,6 +152,16 @@ export interface TrackState {
 
 let jobSeq = 0;
 
+/** De dónde salen las pistas si no es el álbum (artista + álbum). Se guarda en el historial para
+ *  poder pedirlas otra vez tras reiniciar el servidor.
+ *  cancion: el resultado `id` de la búsqueda `q`; pista: una canción de ese álbum (el título es
+ *  `album` del trabajo); buscar: buscar la canción por título y artista (el trabajo) y elegir la
+ *  primera que coincida (la de `album`, si se sabe). */
+export type JobSource =
+  | { tipo: "cancion"; q: string; id: string }
+  | { tipo: "pista"; album: string; artistas: string[] }
+  | { tipo: "buscar"; album?: string };
+
 export class DownloadJob {
   id = randomUUID().replace(/-/g, "").slice(0, 12);
   seq = jobSeq++;   // orden de llegada: decide qué álbum descarga primero
@@ -162,6 +179,20 @@ export class DownloadJob {
   constructor(public artist: string, public album: string, public index = 0, public name?: string) {}
   /** Cómo pedir las pistas, si no es buscar el álbum (p. ej. una canción suelta); también al reintentar. */
   getAudios?: GetAudios;
+  source: JobSource | null = null;
+
+  /** Un trabajo del historial (lo que guardó JSON.stringify). Si se cortó al cerrar el servidor,
+   *  queda como fallido para reintentarlo. */
+  static restore(d: Record<string, unknown>): DownloadJob {
+    const job = Object.assign(new DownloadJob(String(d.artist ?? ""), String(d.album ?? "")), d) as DownloadJob;
+    job.getAudios = undefined;
+    jobSeq = Math.max(jobSeq, (Number(d.seq) || 0) + 1);
+    if (job.status === "queued" || job.status === "running") {
+      job.status = "error"; job.error = "Se cortó al cerrar el servidor."; job.step = null;
+      job.finished = Date.now() / 1000;
+    }
+    return job;
+  }
 
   /** Lo deja como nuevo para reintentarlo en su mismo lugar (lo ya guardado se salta). */
   resetForRetry() {
@@ -229,27 +260,32 @@ export class Downloader {
     if (!Number.isInteger(n) || n < 1 || n > MAX_PARALLEL) throw new RangeError(`Elige un número entre 1 y ${MAX_PARALLEL}.`);
     this.settings.descargas_simultaneas = n;
     this.slots.setLimit(n);
-    this.notify();
-    try { saveSettings(this.settingsFile, this.settings); }
-    catch (e) { return { aviso: `Se aplicó, pero no se pudo guardar en ajustes.json: ${(e as Error).message}` }; }
-    return {};
+    return this.persist();
   }
 
-  /** Cambia un ajuste numérico (una a una, pausa de discografía); se aplica al momento. */
+  /** Cambia un ajuste numérico (una a una, pausa de discografía, hora de «para después»); se aplica al momento. */
   setNumber(key: NumberSetting, n: number): { aviso?: string } {
     const [min, max] = LIMITS[key];
     if (!Number.isInteger(n) || n < min || n > max) throw new RangeError(`Elige un número entre ${min} y ${max}.`);
     this.settings[key] = n;
-    this.notify();
-    try { saveSettings(this.settingsFile, this.settings); }
-    catch (e) { return { aviso: `Se aplicó, pero no se pudo guardar en ajustes.json: ${(e as Error).message}` }; }
-    return {};
+    return this.persist();
   }
 
   /** Cambia con qué versión quedarse (explícita / limpia / cualquiera). */
   setVersion(v: Version): { aviso?: string } {
     if (!VERSIONS.includes(v)) throw new RangeError(`Elige una de: ${VERSIONS.join(", ")}.`);
     this.settings.version = v;
+    return this.persist();
+  }
+
+  /** Cambia qué hacer con un disco nuevo de un artista que sigues (avisar / descargarlo). */
+  setOnRelease(v: OnRelease): { aviso?: string } {
+    if (!ON_RELEASE.includes(v)) throw new RangeError(`Elige una de: ${ON_RELEASE.join(", ")}.`);
+    this.settings.novedades = v;
+    return this.persist();
+  }
+
+  private persist(): { aviso?: string } {
     this.notify();
     try { saveSettings(this.settingsFile, this.settings); }
     catch (e) { return { aviso: `Se aplicó, pero no se pudo guardar en ajustes.json: ${(e as Error).message}` }; }
@@ -320,9 +356,11 @@ export class Downloader {
   }
 
   /** Crea y lanza la descarga de un álbum. */
-  start(artist: string, album: string, index = 0, getAudios?: GetAudios, name?: string, albumVersion: boolean | null = null): DownloadJob {
+  start(artist: string, album: string, index = 0, getAudios?: GetAudios, name?: string, albumVersion: boolean | null = null,
+        source: JobSource | null = null): DownloadJob {
     const job = new DownloadJob(artist.trim(), album.trim(), index, name?.trim() || undefined);
     job.getAudios = getAudios;
+    job.source = source;
     job.albumVersion = albumVersion;
     this.jobs.set(job.id, job);
     this.notify();

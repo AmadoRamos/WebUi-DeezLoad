@@ -70,6 +70,11 @@ function albumEntry(album: Json) {
   };
 }
 type Entry = ReturnType<typeof albumEntry>;
+const artistEntry = (artist: Json) => ({
+  id: artist.id ?? null, nombre: artist.name ?? null,
+  foto: image(artist.picture_big) || image(artist.picture_medium),
+  fans: artist.nb_fan ?? null, albumes: artist.nb_album ?? null, link: artist.link ?? null,
+});
 interface Index { artista: Json | null; exacto: Map<string, Entry>; base: Map<string, Entry> }
 
 export class Covers {
@@ -84,25 +89,38 @@ export class Covers {
     const artist = pickArtist(name, fans, (await this.get("/search/artist", { q: name, limit: 10 })).data || []);
     const index: Index = { artista: null, exacto: new Map(), base: new Map() };
     if (artist) {
-      index.artista = {
-        id: artist.id ?? null, nombre: artist.name ?? null,
-        foto: image(artist.picture_big) || image(artist.picture_medium),
-        fans: artist.nb_fan ?? null, albumes: artist.nb_album ?? null, link: artist.link ?? null,
-      };
-      let url: string | undefined = `${API}/artist/${artist.id}/albums?limit=100`;
-      for (let pages = 0; url && pages < MAX_PAGES; pages++) {
-        const data = await this.get(url);
-        for (const album of data.data || []) {
-          const entry = albumEntry(album);
-          const e = norm(album.title), b = base(album.title);
-          if (!index.exacto.has(e)) index.exacto.set(e, entry);
-          if (!index.base.has(b)) index.base.set(b, entry);
-        }
-        url = data.next;
+      index.artista = artistEntry(artist);
+      for (const album of await this.rawAlbums(artist.id)) {
+        const entry = albumEntry(album);
+        const e = norm(album.title), b = base(album.title);
+        if (!index.exacto.has(e)) index.exacto.set(e, entry);
+        if (!index.base.has(b)) index.base.set(b, entry);
       }
     }
     this.cache.set(key, [Date.now(), index]);
     return index;
+  }
+
+  private async rawAlbums(artistId: number): Promise<Json[]> {
+    const out: Json[] = [];
+    let url: string | undefined = `${API}/artist/${artistId}/albums?limit=100`;
+    for (let pages = 0; url && pages < MAX_PAGES; pages++) {
+      const data = await this.get(url);
+      out.push(...(data.data || []));
+      url = data.next;
+    }
+    return out;
+  }
+
+  /** Los lanzamientos del artista `artistId` en Deezer, sin caché (para ver si hay alguno nuevo). */
+  async albumsOf(artistId: number) {
+    return (await this.rawAlbums(artistId)).map((a) => ({ ...albumEntry(a), titulo: String(a.title ?? "") }));
+  }
+
+  /** El artista de Deezer con ese nombre (el de fans más parecido, si se sabe), o null. Lanza si Deezer no responde. */
+  async findArtist(name: string, fans?: number | null) {
+    const artist = pickArtist(name, fans, (await this.get("/search/artist", { q: name, limit: 10 })).data || []);
+    return artist ? artistEntry(artist) : null;
   }
 
   /** {artista: {...} | null, albumes: {título_del_bot: {id, mediana, grande, fecha, tipo, fans,

@@ -172,6 +172,10 @@
   .tray { max-height: 0; overflow: auto; transition: max-height .3s ease; }
   .dock.expanded .tray { max-height: min(60vh, 520px); }
   .tray-in { padding: 0 20px 16px; }
+  .tray-tools { display: flex; justify-content: flex-end; padding: 2px 0 8px; }
+  .link-btn { all: unset; cursor: pointer; color: var(--dim); font-size: 13.5px; text-decoration: underline; text-underline-offset: 3px; }
+  .link-btn:hover { color: var(--sun); }
+  .link-btn:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; border-radius: 4px; }
   /* Selector de descargas simultáneas */
   .par { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 2px 20px 14px; }
   .par-lbl { font-weight: 700; font-size: 14px; }
@@ -338,12 +342,93 @@
   .toast:focus-visible { outline: 3px solid var(--sun); }
   @keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } }
 
+  /* Secciones: biblioteca, para después, novedades e importar */
+  .views { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; }
+  .views button { all: unset; cursor: pointer; padding: 7px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; color: var(--dim);
+                  display: inline-flex; align-items: center; gap: 6px; }
+  .views button:hover { color: var(--paper); background: var(--deep); }
+  .views button[aria-current="true"] { background: var(--paper); color: var(--deeper); }
+  .views button:focus-visible { outline: 3px solid var(--sun); }
+  .count { min-width: 20px; padding: 1px 6px; border-radius: 999px; background: var(--sun); color: var(--sun-ink); font-size: 12px; text-align: center; }
+  .count[hidden] { display: none; }
+  @media (max-width: 640px) { .views { order: 3; flex-basis: 100%; margin-left: 0; } .set-btn { margin-left: auto; } }
+  .view-tools { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 18px 32px 0; max-width: 980px; }
+  .field { flex: 1 1 240px; min-width: 0; padding: 10px 16px; border-radius: 999px; border: 2px solid transparent; background: var(--paper);
+           color: var(--deeper); outline: none; }
+  .field:focus { border-color: var(--sun); }
+  .chk { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .chk input { width: 18px; height: 18px; accent-color: var(--sun); }
+  .view-note { flex-basis: 100%; color: var(--mint); font-size: 14px; min-height: 1.4em; }
+  .view-note.err { color: var(--err); }
+  .lib { padding: 14px 32px 0; max-width: 980px; display: grid; gap: 8px; }
+  .lib-a { margin: 0; background: var(--deep); border-radius: 16px; }
+  .lib-a > summary { list-style: none; display: flex; justify-content: space-between; gap: 6px 16px; flex-wrap: wrap; padding: 14px 20px;
+                     width: auto; color: var(--paper); font-size: 15px; }
+  .lib-a > summary::-webkit-details-marker { display: none; }
+  .lib-a > summary b { font-size: 17px; }
+  .lib-a > summary span { color: var(--dim); font-weight: 400; font-size: 13.5px; }
+  .lib-a[open] > summary { border-bottom: 1px solid rgba(255,255,255,.08); }
+  .lib-in { padding: 6px 20px 14px; }
+  .lib-al { padding: 12px 0; border-top: 1px solid rgba(255,255,255,.06); }
+  .lib-al:first-of-type { border-top: 0; }
+  .lib-al-h { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .lib-al-h > div { min-width: 0; display: flex; flex-direction: column; }
+  .lib-al-h span { color: var(--dim); font-size: 13px; }
+  .lib-al-h .miss { color: var(--sun); }
+  .btn-small { flex: none; border: 0; border-radius: 999px; padding: 7px 14px; cursor: pointer; font-weight: 700; font-size: 13.5px;
+               background: var(--sun); color: var(--sun-ink); }
+  .btn-small:disabled { opacity: .6; cursor: default; }
+  .btn-small:focus-visible { outline: 3px solid var(--paper); outline-offset: 2px; }
+  .songs .acts { display: flex; flex-direction: row; gap: 8px; align-items: center; flex: none; }
+  .btn-x { flex: none; width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--deeper); color: var(--paper);
+           font-size: 18px; cursor: pointer; display: grid; place-items: center; }
+  .btn-x:hover:not(:disabled) { background: var(--sun); color: var(--sun-ink); }
+  .btn-x:disabled { cursor: default; opacity: .7; }
+  .btn-x:focus-visible { outline: 3px solid var(--sun); }
+  .rel li { padding-left: 12px; }
+  .rel .art { width: 56px; height: 56px; border-radius: 8px; flex: none; }
+  .rel li > div:nth-child(2) { flex: 1; }
+  .following { padding: 30px 32px 0; max-width: 980px; }
+  .following h3 { margin: 0 0 10px; font: 700 18px/1.2 var(--display); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 14px; border-radius: 999px; background: var(--deep); font-weight: 600; }
+  .chip button { all: unset; cursor: pointer; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: var(--dim); }
+  .chip button:hover { background: var(--err); color: #4a0d06; }
+  .chip button:focus-visible { outline: 3px solid var(--sun); }
+  .imp { padding: 18px 32px 0; max-width: 820px; display: grid; gap: 12px; }
+  .imp textarea { width: 100%; min-height: 220px; padding: 14px 18px; border-radius: 16px; border: 2px solid transparent; background: var(--paper);
+                  color: var(--deeper); font: 14.5px/1.5 var(--body); resize: vertical; outline: none; }
+  .imp textarea:focus { border-color: var(--sun); }
+  .imp-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .imp-row .modes { flex-basis: auto; }
+  .imp-row .btn { margin-left: auto; }
+  .file-btn { position: relative; cursor: pointer; padding: 6px 16px; border-radius: 999px; border: 2px solid var(--dim); font-weight: 600; font-size: 14px; }
+  .file-btn:hover { border-color: var(--sun); color: var(--sun); }
+  .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .file-btn:has(input:focus-visible) { outline: 3px solid var(--sun); outline-offset: 3px; }
+  .btn-line { margin-left: 8px; border: 2px solid var(--cobalt); background: transparent; color: var(--cobalt); border-radius: 999px;
+              padding: 12px 18px; font-weight: 700; cursor: pointer; }
+  .btn-line:hover:not(:disabled) { background: var(--cobalt); color: #fff; }
+  .btn-line:disabled { opacity: .7; cursor: default; }
+  .btn-line:focus-visible { outline: 3px solid var(--cobalt); outline-offset: 2px; }
+  .disc-btn[aria-pressed="true"] { background: var(--sun); color: var(--sun-ink); }
+  .sel { padding: 6px 10px; border: 2px solid transparent; border-radius: 10px; background: var(--deep); color: var(--paper); font-weight: 700; }
+  .sel:focus { outline: none; border-color: var(--sun); }
+  @media (max-width: 640px) { .view-tools, .lib, .following, .imp { padding-left: 16px; padding-right: 16px; }
+                              .lib-a > summary, .lib-in { padding-left: 14px; padding-right: 14px; } }
+
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
 <div class="bar-top">
   <a class="mark" href="./">deez<i>load</i></a>
+  <nav class="views" aria-label="Secciones">
+    <button type="button" data-view="biblioteca">Biblioteca</button>
+    <button type="button" data-view="deseos">Para después <span class="count" id="cntDeseos" hidden></span></button>
+    <button type="button" data-view="novedades">Novedades <span class="count" id="cntNovedades" hidden></span></button>
+    <button type="button" data-view="importar">Importar lista</button>
+  </nav>
   <button type="button" class="set-btn" id="setBtn" aria-haspopup="dialog" title="Conectando…"><span aria-hidden="true">⚙</span> Ajustes<span class="dot" aria-hidden="true"></span></button>
 </div>
 <p class="demo" id="demoBar" hidden>Modo demostración: la página se abrió sin el servidor, así que muestra datos de ejemplo.</p>
@@ -418,6 +503,16 @@
       <label class="par-lbl" for="pausaInput">Pausa entre álbumes de una discografía</label>
       <span class="num"><input type="number" id="pausaInput" min="0" max="120" step="1" inputmode="numeric"> s</span>
       <span class="par-hint" id="pausaHint" role="status"></span>
+    </div>
+    <div class="par" id="parWish">
+      <label class="par-lbl" for="wishHour">Descargar lo apuntado «para después» cada día a las</label>
+      <select id="wishHour" class="sel"></select>
+      <span class="par-hint" id="wishHint" role="status"></span>
+    </div>
+    <div class="par" id="parRel">
+      <span class="par-lbl" id="relLbl">Si un artista que sigues saca un disco nuevo</span>
+      <div class="seg" role="group" aria-labelledby="relLbl" id="relSeg"></div>
+      <span class="par-hint" id="relHint" role="status"></span>
     </div>
     <div class="par" id="avisos">
       <span class="par-lbl" id="avisosLbl">Avisos del sistema al terminar una descarga</span>
@@ -546,6 +641,18 @@ const API = {
   settings: () => jget("/api/ajustes"),
   saveSettings: (values) => jpost("/api/ajustes", values),
   retry: (id) => jpost(`/api/jobs/${encodeURIComponent(id)}/reintentar`, {}),
+  clearDone: () => jpost("/api/jobs/limpiar", {}),
+  library: () => jget("/api/biblioteca"),
+  libraryCheck: () => jpost("/api/biblioteca/revisar", {}),
+  wishes: () => jget("/api/deseos"),
+  addWish: (w) => jpost("/api/deseos", w),
+  wishAction: (accion, ids) => jpost("/api/deseos/accion", ids ? { accion, ids } : { accion }),
+  importList: (texto, destino) => jpost("/api/importar", { texto, destino }),
+  follows: () => jget("/api/seguidos"),
+  follow: (artista, fans) => jpost("/api/seguidos", { artista, fans }),
+  unfollow: (id) => jpost(`/api/seguidos/${encodeURIComponent(id)}/dejar`, {}),
+  checkReleases: () => jpost("/api/seguidos/revisar", {}),
+  releaseAction: (accion, ids) => jpost("/api/novedades", { accion, ids }),
   discographies: () => jget("/api/discografias"),
   startDiscography: (body) => jpost("/api/discografias", body),
   discographyAction: (id, action) => jpost(`/api/discografias/${encodeURIComponent(id)}/${action}`, {}),
@@ -578,7 +685,7 @@ function pollJobs(render) {
    completo al conectar y luego solo lo que cambia; el navegador se reconecta solo.
    Respaldo (si los eventos no funcionan o en el modo demo): consultas adaptativas,
    cada 1,5 s mientras hay algo en curso y cada 8 s si no. Cada pocos segundos se reintenta SSE. */
-function liveUpdates({ onJobs, onActivity, onSettings, onDiscs }) {
+function liveUpdates({ onJobs, onActivity, onSettings, onDiscs, onCounts }) {
   const jobsMap = new Map();
   let ops = [], skew = 0, mode = "sse", es = null, fails = 0, pollTimer = null, retryTimer = null, boostUntil = 0;
   const now = () => Date.now() / 1000;
@@ -598,6 +705,7 @@ function liveUpdates({ onJobs, onActivity, onSettings, onDiscs }) {
     if (d.actividad) { ops = d.actividad; emitOps(); }
     if (d.ajustes && onSettings) onSettings(d.ajustes);
     if (d.discografias && onDiscs) onDiscs(d.discografias);
+    if (d.contadores && onCounts) onCounts(d.contadores);
   }
   setInterval(() => { if (ops.length) emitOps(); }, 1000);  // solo el reloj de pantalla, sin peticiones
 
@@ -843,6 +951,7 @@ const Mock = (() => {
   addJob("Soda Stereo", "Doble vida", (j) => { j.status = "running"; j.tracks.slice(0, 3).forEach((t) => finishTrack(j, t)); });
   addJob("Soda Stereo", "Ruido blanco", (j) => { j.status = "error"; j.error = "El bot no envió pistas para este álbum."; j.failed = true; });
   const mockSettings = { descargas_simultaneas: 1 };
+  const demoWishes = [], demoFollow = { artistas: [], novedades: [], revisado: 0 };
   function tick() {
     const ready = jobs.filter((j) => j.status === "running" && !j.preparing);
     for (const j of jobs) if (j.status === "queued") j.status = "running";
@@ -904,9 +1013,47 @@ const Mock = (() => {
           ["Leyendo las canciones: página 1", 600]]).done;
         return tracksFor(a);
       }
+      if (u.pathname === "/api/biblioteca") {   // demo: unos álbumes de Soda Stereo, uno incompleto
+        await wait(300);
+        const album = (t, n, total) => ({ album: t, total, faltan: Math.max(0, total - n), tamano: n * 30e6,
+          canciones: tracksFor(t).pistas.slice(0, n).map((p, i) => ({ titulo: p.titulo, archivo: `Soda Stereo - ${p.titulo}.flac`, n: i + 1, tamano: 30e6 })) });
+        const albumes = [album("Canción animal", 3, 10), album("Signos", 8, 8)];
+        return [{ artista: "Soda Stereo", albumes, canciones: 11, tamano: 11 * 30e6 }];
+      }
+      if (u.pathname === "/api/deseos") return demoWishes;
+      if (u.pathname === "/api/seguidos") return demoFollow;
       throw new Error("Ruta no encontrada");
     },
     async post(url, body) {
+      if (url === "/api/jobs/limpiar") { for (let i = jobs.length - 1; i >= 0; i--) if (["completed", "error"].includes(pub(jobs[i]).status)) jobs.splice(i, 1); return { ok: true }; }
+      if (url === "/api/biblioteca/revisar") { await wait(600); return { revisados: 0, sin_datos: 0 }; }
+      if (url === "/api/deseos") { const w = { ...body, id: `w${Date.now()}`, anadido: Date.now() / 1000 }; demoWishes.push(w); return w; }
+      if (url === "/api/deseos/accion") {
+        const take = demoWishes.filter((w) => !body.ids || body.ids.includes(w.id));
+        demoWishes.splice(0, demoWishes.length, ...demoWishes.filter((w) => !take.includes(w)));
+        if (body.accion === "descargar") take.forEach((w) => addJob(w.artista, w.titulo));
+        return { jobs: [], quitados: take.length };
+      }
+      if (url === "/api/importar") {
+        const lines = body.texto.split(/\n/).filter((l) => l.includes(" - "));
+        lines.forEach((l) => { const [a, t] = l.split(" - "); body.destino === "deseos" ? demoWishes.push({ id: `w${Math.random()}`, tipo: "cancion", artista: a, titulo: t }) : addJob(a, t); });
+        return { anadidas: lines.length, ya_tienes: [], repetidas: 0, no_entendidas: [] };
+      }
+      if (url === "/api/seguidos") { demoFollow.artistas.push({ id: 9, nombre: body.artista, foto: null, desde: Date.now() / 1000 }); return demoFollow; }
+      const unf = url.match(/^\/api\/seguidos\/(\d+)\/dejar$/);
+      if (unf) { demoFollow.artistas = demoFollow.artistas.filter((a) => String(a.id) !== unf[1]); return demoFollow; }
+      if (url === "/api/seguidos/revisar") {
+        await wait(700); demoFollow.revisado = Date.now() / 1000;
+        if (!demoFollow.novedades.length) demoFollow.novedades.push({ id: 1, artista: "Soda Stereo", artista_id: 9, album: "Ruido blanco", fecha: "2026-10-01", tipo: "album", mediana: null, explicito: false });
+        return { ...demoFollow, encontrados: 1 };
+      }
+      if (url === "/api/novedades") {
+        const take = demoFollow.novedades.filter((r) => body.ids.includes(r.id));
+        demoFollow.novedades = demoFollow.novedades.filter((r) => !take.includes(r));
+        take.forEach((r) => body.accion === "descargar" ? addJob(r.artista, r.album)
+          : body.accion === "despues" && demoWishes.push({ id: `w${r.id}`, tipo: "album", artista: r.artista, titulo: r.album }));
+        return demoFollow;
+      }
       const retry = url.match(/^\/api\/jobs\/([^/]+)\/reintentar$/);
       if (retry) {
         await wait(300);
@@ -948,7 +1095,7 @@ const Mock = (() => {
       }
       if (url === "/api/ajustes") {
         await wait(200);
-        mockSettings.descargas_simultaneas = body.descargas_simultaneas;
+        Object.assign(mockSettings, body);
         return { ...mockSettings, maximo: 5 };
       }
       if (url === "/api/covers") {  // demo: datos tipo Deezer sin imágenes
@@ -986,6 +1133,7 @@ async function loadConfig() {
 
 async function search(ev) {
   ev?.preventDefault();
+  state.view = null; markView(null);   // se sale de Biblioteca, Para después…
   hideSheetTab();   // la ficha anterior era de otra búsqueda
   const artist = $("#artist").value.trim();
   if (!artist && !songMode() && $("#album").value.trim()) return searchAlbums($("#album").value.trim());
@@ -1032,8 +1180,10 @@ async function searchSongs(q) {
   if (!songs.length) { $("#results").innerHTML = `<p class="loading">No encontramos canciones con «${esc(q)}». Prueba con otra forma del título.</p>`; return; }
   $("#results").innerHTML = `<div class="artist"><h2>Canciones</h2><p>${plural(songs.length, "resultado", "resultados")} para «${esc(q)}»</p></div>
     <ul class="songs">${songs.map((s, i) => `<li><div><b>${esc(s.titulo)}</b><span>${esc([s.artista, s.album].filter(Boolean).join(" · "))}</span></div>
-      <button type="button" class="btn" data-i="${i}">Descargar</button></li>`).join("")}</ul>`;
-  $$(".songs button", $("#results")).forEach((b) => (b.onclick = () => downloadSong(q, songs[b.dataset.i], b)));
+      <div class="acts"><button type="button" class="btn-x" data-w="${i}" title="Para después" aria-label="Apuntar «${escAttr(s.titulo)}» para después">☆</button>
+      <button type="button" class="btn" data-i="${i}">Descargar</button></div></li>`).join("")}</ul>`;
+  $$(".songs button[data-i]", $("#results")).forEach((b) => (b.onclick = () => downloadSong(q, songs[b.dataset.i], b)));
+  $$(".songs button[data-w]", $("#results")).forEach((b) => (b.onclick = () => wishSong(songs[b.dataset.w], b)));
   // Las que ya están en la carpeta (por artista y título, como en los álbumes)
   try {
     const found = (await API.existing(q, songs.map((s) => ({ titulo: s.titulo, artista: s.artista })))).existentes || [];
@@ -1123,12 +1273,13 @@ function searchAlbum(artist, album) {
 function renderAlbums(data) {
   if (data.error) { $("#results").innerHTML = `<p class="error">${esc(data.error)}</p>`; return; }
   const who = parseArtist(data.artista, state.artist);
-  state.artistName = who.name;
+  state.artistName = who.name; state.fans = who.fans;
   const sections = data.secciones || {};
   const meta = [plural(data.total ?? 0, "lanzamiento", "lanzamientos"), ...who.meta.filter((m) => !/Deezer$/.test(m))];
   state.sections = sections;
   let html = `<div class="artist"><h2>${esc(state.artistName)}</h2><p id="artistMeta">${meta.map(esc).join("<br>")}</p>
-    ${Object.keys(sections).length ? `<button type="button" class="disc-btn" id="discBtn">Descargar discografía</button>` : ""}</div>`;
+    ${Object.keys(sections).length ? `<button type="button" class="disc-btn" id="discBtn">Descargar discografía</button>` : ""}
+    <button type="button" class="disc-btn" id="followBtn" aria-pressed="false">Seguir</button></div>`;
   Object.entries(sections).forEach(([sec, albums], i) => {
     html += `<section class="shelf"><div class="shelf-h"><h3>${esc(secName(sec))}</h3><span>${albums.length}</span>
       <div class="nav"><button data-dir="-1" data-row="r${i}" aria-label="Anteriores">‹</button><button data-dir="1" data-row="r${i}" aria-label="Siguientes">›</button></div></div>
@@ -1139,6 +1290,8 @@ function renderAlbums(data) {
   $("#results").innerHTML = html;
   $("#discBtn")?.addEventListener("click", openDiscDialog);
   updateDiscButton();
+  $("#followBtn").onclick = (e) => toggleFollow(e.currentTarget);
+  updateFollowButton();
   const search = state.artist;
   state.coversReady = loadCovers(state.artistName, who.fans, Object.values(sections).flat()).then((artist) => {
     if (state.artist !== search) return;  // llegó tarde: el usuario ya buscó otra cosa
@@ -1212,7 +1365,7 @@ function renderTracks(album, data) {
   state.trackData = data;
   let html = `${artHTML(album, "grande")}<h2 id="sheetTitle">${esc(album)}</h2>
     <p class="meta">${sheetMeta(album)}</p>
-    ${tracks.length ? `<button class="btn" id="dlBtn">Descargar álbum</button><span class="note" id="dlNote" role="status"></span><p class="have-note" id="haveNote" hidden></p>` : ""}
+    ${tracks.length ? `<button class="btn" id="dlBtn">Descargar álbum</button><button type="button" class="btn-line" id="wishBtn">☆ Para después</button><span class="note" id="dlNote" role="status"></span><p class="have-note" id="haveNote" hidden></p>` : ""}
     <dl class="facts" id="facts">${factsHTML(album, data)}</dl>`;
   if (data.aviso) html += `<p class="aviso">${esc(data.aviso)}</p>`;
   if (tracks.length) {
@@ -1225,6 +1378,7 @@ function renderTracks(album, data) {
   $("#sheetBody").innerHTML = html;
   const b = $("#dlBtn");
   if (b) b.onclick = () => startDownload(album, b);
+  $("#wishBtn")?.addEventListener("click", (e) => wishAlbum(album, e.currentTarget));
   $$("#sheetBody .tdl").forEach((tb) => (tb.onclick = () => downloadTrack(album, tracks[tb.dataset.i], tb)));
   if (tracks.length) markExisting(album, tracks);
 }
@@ -1321,7 +1475,10 @@ function renderJobs(jobs) {
   const discIds = new Set(DISCS.map((x) => x.id));
   const activeDisc = (id) => DISCS.some((x) => x.id === id && !["completed", "canceled"].includes(x.status));
   const loose = jobs.filter((j) => !j.discografia || !discIds.has(j.discografia) || (j.status === "error" && !activeDisc(j.discografia)));
-  $("#jobsBox").innerHTML = DISCS.map((dc) => discCardHTML(dc, jobs)).join("") + loose.map((j) => jobCardHTML(j)).join("");
+  const ended = jobs.some((j) => j.status === "completed" || j.status === "error")
+    || DISCS.some((dc) => dc.status === "completed" || dc.status === "canceled");
+  $("#jobsBox").innerHTML = (ended ? `<div class="tray-tools"><button type="button" class="link-btn" id="clearDone">Quitar las terminadas</button></div>` : "")
+    + DISCS.map((dc) => discCardHTML(dc, jobs)).join("") + loose.map((j) => jobCardHTML(j)).join("");
   $$("#jobsBox details").forEach((det) =>
     det.addEventListener("toggle", () => state.jobOpen.set(det.dataset.key, det.open)));
 }
@@ -1425,6 +1582,294 @@ function renderActivity(ops) {
   }).join("");
 }
 function refreshActivity() { live?.kick(); }
+
+/* ===== Secciones: biblioteca, «para después», novedades e importar ===== */
+const COUNTS = { deseos: 0, novedades: 0 };
+let FOLLOW = { artistas: [], novedades: [], revisado: 0 }, LIB = [], firstCounts = true;
+const VIEWS = { biblioteca: () => renderLibrary(), deseos: () => renderWishes(), novedades: () => renderReleases(), importar: () => renderImport() };
+
+function markView(name) { $$(".views button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.view === name))); }
+function showView(name) {
+  state.view = name; state.artist = ""; state.query = "";   // lo que llegue tarde de otra búsqueda ya no se muestra
+  hideSheetTab();
+  document.body.classList.add("searched");
+  markView(name);
+  VIEWS[name]();
+}
+const inView = (name) => state.view === name;
+function viewError(name, what, e) { if (inView(name)) $("#results").innerHTML = `<p class="error">No se pudo ${what}: ${esc(e.message)}</p>`; }
+const viewLoading = (text) => { $("#results").innerHTML = `<div class="loading"><span class="spin"></span>${esc(text)}</div>`; };
+function setCount(sel, n) { const el = $(sel); el.textContent = n; el.hidden = !n; }
+function setNote(el, text, err = false) { if (el) { el.className = "view-note" + (err ? " err" : ""); el.textContent = text; } }
+
+// Números de la barra de arriba (llegan con los avisos en vivo). Si hay discos nuevos, se avisa.
+function onCounts(c) {
+  const fresh = !firstCounts && c.novedades > COUNTS.novedades, changed = c.deseos !== COUNTS.deseos || c.novedades !== COUNTS.novedades;
+  firstCounts = false;
+  Object.assign(COUNTS, c);
+  setCount("#cntDeseos", c.deseos); setCount("#cntNovedades", c.novedades);
+  if (fresh) {
+    const n = c.novedades;
+    noteToast(n === 1 ? "Hay un disco nuevo" : `Hay ${n} discos nuevos`, "De artistas que sigues. Toca para verlos.", () => showView("novedades"));
+    sysNotify(n === 1 ? "Hay un disco nuevo" : `Hay ${n} discos nuevos`, "De artistas que sigues.");
+  }
+  if (changed && (inView("deseos") || inView("novedades"))) VIEWS[state.view]();
+}
+async function loadCounts() {   // al abrir la página (sin avisos en vivo, p. ej. en el modo demo)
+  try { const [w, f] = await Promise.all([API.wishes(), API.follows()]); FOLLOW = f; onCounts({ deseos: w.length, novedades: f.novedades.length }); }
+  catch (e) { /* sin números */ }
+}
+function noteToast(title, body, onclick) {
+  const t = document.createElement("button");
+  t.className = "toast";
+  t.innerHTML = `${artHTML(title)}<div><b>${esc(title)}</b><span>${esc(body)}</span></div>`;
+  t.onclick = () => { onclick?.(); t.remove(); };
+  $("#toasts").prepend(t);
+  setTimeout(() => t.remove(), 9000);
+}
+
+// --- Biblioteca: lo que hay en la carpeta, por artista y álbum, y los álbumes a los que les faltan canciones.
+async function renderLibrary() {
+  viewLoading("Leyendo tu carpeta de descargas…");
+  try { LIB = await API.library(); } catch (e) { return viewError("biblioteca", "leer tu biblioteca", e); }
+  if (!inView("biblioteca")) return;
+  const songs = LIB.reduce((a, x) => a + x.canciones, 0), size = LIB.reduce((a, x) => a + x.tamano, 0);
+  const inc = LIB.flatMap((a) => a.albumes.filter((al) => al.faltan).map((al) => ({ artista: a.artista, album: al.album })));
+  const unknown = LIB.some((a) => a.albumes.some((al) => al.album && !al.total));
+  $("#results").innerHTML = `<div class="artist"><h2>Tu biblioteca</h2><p>${LIB.length
+      ? `${plural(LIB.length, "artista", "artistas")} · ${plural(songs, "canción", "canciones")} · ${fmtBytes(size)}`
+      : "Todavía no hay música en tu carpeta de descargas."}</p></div>
+    ${LIB.length ? `<div class="view-tools">
+      <input type="search" id="libFilter" class="field" placeholder="Filtrar por artista o álbum" aria-label="Filtrar la biblioteca" value="${escAttr(state.libQ || "")}">
+      <label class="chk"><input type="checkbox" id="libInc"${state.libInc ? " checked" : ""}> Solo álbumes incompletos (${inc.length})</label>
+      ${inc.length ? `<button type="button" class="disc-btn" id="libFillAll">Completar ${inc.length === 1 ? "el incompleto" : `los ${inc.length} incompletos`}</button>` : ""}
+      ${unknown ? `<button type="button" class="link-btn" id="libCheck">Preguntar a Deezer cuántas canciones tiene cada álbum</button>` : ""}
+      <span class="view-note" id="libNote" role="status"></span></div>
+    <div class="lib" id="libList">${libHTML()}</div>` : ""}`;
+  if (!LIB.length) return;
+  $("#libFilter").oninput = (e) => { state.libQ = e.target.value; $("#libList").innerHTML = libHTML(); };
+  $("#libInc").onchange = (e) => { state.libInc = e.target.checked; $("#libList").innerHTML = libHTML(); };
+  $("#libFillAll")?.addEventListener("click", async (e) => {
+    e.target.disabled = true;
+    let ok = 0;
+    for (const a of inc) { try { await API.download(a.artista, a.album); ok++; } catch (err) { /* sigue con los demás */ } }
+    setNote($("#libNote"), `${plural(ok, "álbum añadido", "álbumes añadidos")} a descargas: se bajan solo las canciones que faltan.`, ok < inc.length);
+    setDock(true); refreshJobs();
+  });
+  $("#libCheck")?.addEventListener("click", async (e) => {
+    e.target.disabled = true; e.target.textContent = "Preguntando a Deezer…";
+    try {
+      const r = await API.libraryCheck();
+      await renderLibrary();
+      setNote($("#libNote"), `Deezer dio el número de canciones de ${plural(r.revisados, "álbum", "álbumes")}${r.sin_datos ? `; de ${r.sin_datos} no lo sabe` : ""}.`);
+    } catch (err) { e.target.disabled = false; e.target.textContent = "Preguntar a Deezer cuántas canciones tiene cada álbum"; setNote($("#libNote"), `No se pudo: ${err.message}`, true); }
+  });
+}
+function libHTML() {
+  const q = plainName(state.libQ), onlyInc = state.libInc;
+  const html = LIB.map((a) => {
+    const albums = a.albumes.filter((al) => (!onlyInc || al.faltan) && (!q || plainName(a.artista).includes(q) || plainName(al.album).includes(q)));
+    if (!albums.length) return "";
+    const nAlb = a.albumes.filter((al) => al.album).length;
+    return `<details class="lib-a"${q || onlyInc ? " open" : ""}><summary><b>${esc(a.artista)}</b>
+      <span>${[nAlb && plural(nAlb, "álbum", "álbumes"), plural(a.canciones, "canción", "canciones"), fmtBytes(a.tamano)].filter(Boolean).join(" · ")}</span></summary>
+      <div class="lib-in"><button type="button" class="link-btn" data-artist="${escAttr(a.artista)}">Ver sus álbumes en el bot</button>
+      ${albums.map((al) => `<div class="lib-al"><div class="lib-al-h"><div><b>${esc(al.album || "Canciones sueltas")}</b>
+        <span>${al.total ? `${al.canciones.length} de ${al.total} canciones` : plural(al.canciones.length, "canción", "canciones")}${al.faltan
+          ? ` · <span class="miss">${al.faltan === 1 ? "falta 1" : `faltan ${al.faltan}`}</span>` : ""} · ${fmtBytes(al.tamano)}</span></div>
+        ${al.faltan ? `<button type="button" class="btn-small" data-fill="${escAttr(a.artista)}" data-album="${escAttr(al.album)}">Completar</button>` : ""}</div>
+        <details><summary>Canciones</summary><ul class="files">${al.canciones.map((c) => `<li><span class="t">${c.n ? `${c.n}. ` : ""}${esc(c.titulo)}</span>
+          <span class="r"><span>${fmtBytes(c.tamano)}</span><a href="/files/${encodeURIComponent(c.archivo)}" target="_blank" rel="noopener">Abrir</a></span></li>`).join("")}</ul></details></div>`).join("")}
+      </div></details>`;
+  }).join("");
+  return html || `<p class="empty">Nada coincide con el filtro.</p>`;
+}
+document.addEventListener("click", async (e) => {
+  const fill = e.target.closest("[data-fill]"), artist = e.target.closest("[data-artist]");
+  if (artist) {   // buscar al artista en el bot (como escribirlo arriba)
+    $("input[name=mode][value=artista]").checked = true; setMode();
+    $("#artist").value = artist.dataset.artist; $("#album").value = "";
+    return search();
+  }
+  if (!fill) return;
+  fill.disabled = true; fill.textContent = "Añadiendo…";
+  try { await API.download(fill.dataset.fill, fill.dataset.album); fill.textContent = "Añadido"; setDock(true); refreshJobs(); }
+  catch (err) { fill.disabled = false; fill.textContent = "Completar"; fill.title = `No se pudo: ${err.message}`; }
+});
+
+// --- Para después: álbumes y canciones apuntados para descargarlos más tarde.
+async function renderWishes() {
+  let items;
+  try { items = await API.wishes(); } catch (e) { return viewError("deseos", "leer la lista", e); }
+  if (!inView("deseos")) return;
+  const h = PLANS.deseos_hora ?? -1;
+  const when = h >= 0 ? `Se descargan solos cada día a las ${h}:00 (en Ajustes).` : "Puedes elegir en Ajustes una hora para que se descarguen solos.";
+  $("#results").innerHTML = `<div class="artist"><h2>Para después</h2><p>${items.length ? `${plural(items.length, "apuntado", "apuntados")}. ${when}` : "No hay nada apuntado."}</p>
+    ${items.length > 1 ? `<button type="button" class="disc-btn" id="wishAll">Descargar todo</button>` : ""}</div>
+    ${items.length ? `<ul class="songs">${items.map((w) => `<li><div><b>${esc(w.titulo)}</b>
+      <span>${esc([w.tipo === "album" ? "Álbum" : "Canción", w.artista, w.album].filter(Boolean).join(" · "))}</span></div>
+      <div class="acts"><button type="button" class="btn-x" data-wrm="${escAttr(w.id)}" title="Quitar" aria-label="Quitar «${escAttr(w.titulo)}»">×</button>
+      <button type="button" class="btn" data-wdl="${escAttr(w.id)}">Descargar</button></div></li>`).join("")}</ul>`
+    : `<p class="loading">Apunta álbumes («☆ Para después» en la ficha del álbum) o canciones (☆ en los resultados), o importa una lista.</p>`}`;
+  $("#wishAll")?.addEventListener("click", () => wishAction("descargar"));
+  $$("[data-wdl]").forEach((b) => (b.onclick = () => wishAction("descargar", [b.dataset.wdl], b)));
+  $$("[data-wrm]").forEach((b) => (b.onclick = () => wishAction("quitar", [b.dataset.wrm], b)));
+}
+async function wishAction(accion, ids, b) {
+  if (b) b.disabled = true;
+  try {
+    await API.wishAction(accion, ids);
+    if (accion === "descargar") { setDock(true); refreshJobs(); }
+    if (DEMO || live.mode !== "sse") loadCounts();
+    renderWishes();
+  } catch (e) { if (b) { b.disabled = false; b.title = `No se pudo: ${e.message}`; } }
+}
+async function wishAlbum(album, b) {
+  b.disabled = true;
+  try {
+    await API.addWish({ tipo: "album", artista: state.artist || state.artistName, titulo: album, nombre: state.artistName, lista: fromList(album) });
+    b.textContent = "★ Apuntado"; b.title = "Está en «Para después»";
+    if (DEMO || live.mode !== "sse") loadCounts();
+  } catch (e) { b.disabled = false; b.title = `No se pudo apuntar: ${e.message}`; }
+}
+async function wishSong(s, b) {
+  b.disabled = true;
+  try {
+    await API.addWish({ tipo: "cancion", artista: s.artista, titulo: s.titulo, album: s.album });
+    b.textContent = "★"; b.title = "Está en «Para después»";
+    if (DEMO || live.mode !== "sse") loadCounts();
+  } catch (e) { b.disabled = false; b.title = `No se pudo apuntar: ${e.message}`; }
+}
+
+// --- Novedades: discos nuevos de los artistas que sigues.
+const followed = (name) => FOLLOW.artistas.find((a) => plainName(a.nombre) === plainName(name));
+function updateFollowButton() {
+  const b = $("#followBtn");
+  if (!b) return;
+  const f = followed(state.artistName);
+  b.textContent = f ? "Siguiendo ✓" : "Seguir";
+  b.setAttribute("aria-pressed", String(!!f));
+  b.title = f ? "Te avisamos cuando saque un disco nuevo. Pulsa para dejar de seguirlo." : "Te avisamos cuando saque un disco nuevo";
+}
+async function toggleFollow(b) {
+  b.disabled = true;
+  try {
+    const f = followed(state.artistName);
+    FOLLOW = f ? await API.unfollow(f.id) : await API.follow(state.artistName, state.fans ?? null);
+    updateFollowButton();
+  } catch (e) { b.title = `No se pudo: ${e.message}`; }
+  finally { b.disabled = false; }
+}
+async function renderReleases() {
+  try { FOLLOW = await API.follows(); } catch (e) { return viewError("novedades", "leer los artistas que sigues", e); }
+  if (!inView("novedades")) return;
+  const { artistas, novedades, revisado } = FOLLOW;
+  const last = revisado ? ` Última búsqueda: ${new Date(revisado * 1000).toLocaleString("es", { dateStyle: "medium", timeStyle: "short" })}.` : "";
+  $("#results").innerHTML = `<div class="artist"><h2>Novedades</h2><p>${artistas.length
+      ? `Discos nuevos de los artistas que sigues. Se busca cada 12 horas.${last}` : "Todavía no sigues a ningún artista."}</p>
+    ${artistas.length ? `<button type="button" class="disc-btn" id="relCheck">Buscar ahora</button>` : ""}
+    ${novedades.length > 1 ? `<button type="button" class="disc-btn" id="relAll">Descargar todas</button>` : ""}</div>
+    <div class="view-tools"><span class="view-note" id="relNote" role="status"></span></div>
+    ${novedades.length ? `<ul class="songs rel">${novedades.map((r) => `<li><span class="art" style="${sleeveStyle(r.album)}">${r.mediana ? coverImg(r.mediana) : ""}</span>
+      <div><b>${esc(r.album)}</b><span>${esc([r.artista, typeLabel(r.tipo), r.fecha && fmtDate(r.fecha), r.explicito && "explícito"].filter(Boolean).join(" · "))}</span></div>
+      <div class="acts"><button type="button" class="btn-x" data-rel="descartar" data-id="${r.id}" title="Descartar" aria-label="Descartar «${escAttr(r.album)}»">×</button>
+      <button type="button" class="btn-x" data-rel="despues" data-id="${r.id}" title="Para después" aria-label="Apuntar «${escAttr(r.album)}» para después">☆</button>
+      <button type="button" class="btn" data-rel="descargar" data-id="${r.id}">Descargar</button></div></li>`).join("")}</ul>`
+    : artistas.length ? `<p class="loading">No hay discos nuevos por ahora.</p>` : ""}
+    <section class="following">${artistas.length ? `<h3>Sigues a ${plural(artistas.length, "artista", "artistas")}</h3>
+      <div class="chips">${artistas.map((a) => `<span class="chip">${esc(a.nombre)}<button type="button" data-unfollow="${a.id}" aria-label="Dejar de seguir a ${escAttr(a.nombre)}" title="Dejar de seguir">×</button></span>`).join("")}</div>`
+      : `<p class="empty">Busca un artista y pulsa «Seguir»: cuando saque un disco nuevo aparecerá aquí${PLANS.novedades === "descargar" ? " y se descargará solo" : ""}.</p>`}</section>`;
+  $("#relCheck")?.addEventListener("click", async (e) => {
+    e.target.disabled = true; e.target.textContent = "Buscando…";
+    try {
+      const r = await API.checkReleases();
+      await renderReleases();
+      if (r.encontrados) setNote($("#relNote"), `${plural(r.encontrados, "disco nuevo", "discos nuevos")}${PLANS.novedades === "descargar" ? ": se están descargando" : ""}.`);
+      if (PLANS.novedades === "descargar" && r.encontrados) { setDock(true); refreshJobs(); }
+    } catch (err) { e.target.disabled = false; e.target.textContent = "Buscar ahora"; setNote($("#relNote"), `No se pudo buscar: ${err.message}`, true); }
+  });
+  $("#relAll")?.addEventListener("click", () => releaseAction("descargar", novedades.map((r) => r.id)));
+  $$("[data-rel]").forEach((b) => (b.onclick = () => releaseAction(b.dataset.rel, [Number(b.dataset.id)], b)));
+  $$("[data-unfollow]").forEach((b) => (b.onclick = async () => {
+    b.disabled = true;
+    try { FOLLOW = await API.unfollow(b.dataset.unfollow); renderReleases(); } catch (e) { b.disabled = false; }
+  }));
+}
+async function releaseAction(accion, ids, b) {
+  if (b) b.disabled = true;
+  try {
+    FOLLOW = await API.releaseAction(accion, ids);
+    if (accion === "descargar") { setDock(true); refreshJobs(); }
+    if (DEMO || live.mode !== "sse") loadCounts();
+    renderReleases();
+  } catch (e) { if (b) { b.disabled = false; b.title = `No se pudo: ${e.message}`; } }
+}
+
+// --- Importar una lista de canciones (texto pegado o un archivo .csv / .txt).
+function renderImport() {
+  $("#results").innerHTML = `<div class="artist"><h2>Importar una lista</h2>
+    <p>Pega canciones, una por línea como «Artista - Título», o un CSV exportado de Spotify (por ejemplo con Exportify). Las que ya tienes se saltan.</p></div>
+    <form class="imp" id="impForm">
+      <textarea id="impText" aria-label="Lista de canciones" placeholder="Soda Stereo - De Música Ligera&#10;Charly García - Demoliendo Hoteles">${esc(state.impText || "")}</textarea>
+      <div class="imp-row"><label class="file-btn">Abrir un archivo…<input type="file" id="impFile" accept=".csv,.txt,text/csv,text/plain"></label>
+        <div class="modes" role="radiogroup" aria-label="Qué hacer con ellas">
+          <label><input type="radio" name="impDest" value="descargar" checked> Descargarlas ahora</label>
+          <label><input type="radio" name="impDest" value="deseos"> Apuntarlas para después</label></div>
+        <button class="btn" type="submit" id="impGo">Importar</button></div>
+      <p class="view-note" id="impNote" role="status"></p>
+    </form>`;
+  $("#impText").oninput = (e) => { state.impText = e.target.value; };
+  $("#impFile").onchange = async (e) => {
+    const f = e.target.files[0];
+    if (f) { $("#impText").value = state.impText = await f.text(); setNote($("#impNote"), `Cargado «${f.name}».`); }
+  };
+  $("#impForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const text = $("#impText").value.trim(), dest = $("input[name=impDest]:checked").value;
+    if (!text) return $("#impText").focus();
+    $("#impGo").disabled = true;
+    try {
+      const r = await API.importList(text, dest);
+      const one = r.anadidas === 1, had = r.ya_tienes.length, bad = r.no_entendidas.length;
+      const parts = [`${plural(r.anadidas, "canción", "canciones")} ${dest === "deseos" ? `${one ? "apuntada" : "apuntadas"} para después` : `${one ? "añadida" : "añadidas"} a descargas`}`];
+      if (had) parts.push(had === 1 ? "1 ya la tenías" : `${had} ya las tenías`);
+      if (r.repetidas) parts.push(`${plural(r.repetidas, "repetida", "repetidas")}`);
+      if (bad) parts.push(`${bad === 1 ? "no se entendió 1 línea" : `no se entendieron ${bad} líneas`}: ${r.no_entendidas.slice(0, 3).join(" / ")}${bad > 3 ? "…" : ""}`);
+      setNote($("#impNote"), parts.join("; ") + ".", !r.anadidas);
+      if (r.anadidas) { $("#impText").value = state.impText = ""; }
+      if (dest === "descargar" && r.anadidas) { setDock(true); refreshJobs(); }
+      if (DEMO || live.mode !== "sse") loadCounts();
+    } catch (err) { setNote($("#impNote"), `No se pudo importar: ${err.message}`, true); }
+    finally { $("#impGo").disabled = false; }
+  };
+}
+
+// --- Ajustes: hora de «para después» y qué hacer con un disco nuevo.
+const PLANS = {};
+const REL_OPTS = [["avisar", "Avisarme"], ["descargar", "Descargarlo"]];
+function renderPlans(s) {
+  Object.assign(PLANS, { deseos_hora: s.deseos_hora ?? -1, novedades: s.novedades || "avisar" });
+  const sel = $("#wishHour");
+  if (!sel.options.length)
+    sel.innerHTML = `<option value="-1">Nunca: solo a mano</option>` + Array.from({ length: 24 }, (_, h) => `<option value="${h}">${h}:00</option>`).join("");
+  if (document.activeElement !== sel) sel.value = String(PLANS.deseos_hora);
+  $("#relSeg").innerHTML = REL_OPTS.map(([v, t]) => `<button type="button" data-v="${v}" aria-pressed="${v === PLANS.novedades}">${t}</button>`).join("");
+}
+$("#wishHour").onchange = async (e) => {
+  try {
+    renderPlans(await API.saveSettings({ deseos_hora: Number(e.target.value) }));
+    setHint($("#wishHint"), PLANS.deseos_hora >= 0 ? `Cada día a las ${PLANS.deseos_hora}:00 se descarga lo apuntado.` : "Solo cuando pulses «Descargar».", "ok");
+  } catch (err) { setHint($("#wishHint"), `No se pudo guardar: ${err.message}`, "err"); }
+};
+$("#relSeg").onclick = async (e) => {
+  const b = e.target.closest("button[data-v]");
+  if (!b) return;
+  try {
+    renderPlans(await API.saveSettings({ novedades: b.dataset.v }));
+    setHint($("#relHint"), PLANS.novedades === "descargar" ? "Se descargará solo (de la versión que prefieras)." : "Aparecerá en Novedades para que decidas.", "ok");
+  } catch (err) { setHint($("#relHint"), `No se pudo guardar: ${err.message}`, "err"); }
+};
+$$(".views button").forEach((b) => (b.onclick = () => showView(b.dataset.view)));
 
 /* ===== Avisos al terminar descargas y progreso en el título ===== */
 const seenStatus = new Map();
@@ -1626,6 +2071,10 @@ function retryHTML(j) {
     <button type="button" class="btn-retry" data-retry="${escAttr(j.id)}">Volver a intentar</button>
     <span class="retry-note" role="status"></span></div>`;
 }
+document.addEventListener("click", async (e) => {   // quitar de la bandeja (y del historial) lo terminado
+  if (!e.target.closest("#clearDone")) return;
+  try { await API.clearDone(); refreshJobs(); } catch (err) { alert(`No se pudo limpiar: ${err.message}`); }
+});
 document.addEventListener("click", async (e) => {
   const b = e.target.closest("[data-retry]");
   if (!b) return;
@@ -1838,14 +2287,17 @@ var live = liveUpdates({
   onJobs: renderJobs,
   onDiscs,
   onActivity: renderActivity,
+  onCounts,
   onSettings: (s) => {  // p. ej. si lo cambiaste en otra pestaña
     renderNums(s);
+    renderPlans(s);
     if (!savingVer && (s.version || null) !== VER.v) { VER.v = s.version || null; renderVer(); }
     if (savingPar || (s.descargas_simultaneas === PAR.n && (s.maximo || 5) === PAR.max)) return;
     PAR.n = s.descargas_simultaneas; PAR.max = s.maximo || 5; renderPar();
   },
 });
 const refreshJobs = () => live.kick();
+loadCounts();
 </script>
 </body>
 </html>

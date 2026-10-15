@@ -71,9 +71,16 @@ export function find(index: FolderIndex, title: string | undefined | null, artis
 }
 
 /** Versión de un FLAC según su etiqueta ITUNESADVISORY (la escribe el bot): true explícita,
- *  false limpia, null si no se sabe (no es FLAC, no tiene la etiqueta o no se puede leer).
- *  Lee solo los bloques de metadatos del principio del archivo. */
+ *  false limpia, null si no se sabe (no es FLAC, no tiene la etiqueta o no se puede leer). */
 export function explicitOf(path: string): boolean | null {
+  const v = flacTags(path)?.ITUNESADVISORY;
+  return v === undefined ? null : v.startsWith("1");
+}
+
+/** Etiquetas de un FLAC (VORBIS_COMMENT), con la clave en mayúsculas ({ARTIST, ALBUM, TITLE,
+ *  TRACKNUMBER…}; si se repite, la primera). null si no es FLAC o no se puede leer.
+ *  Lee solo los bloques de metadatos del principio del archivo. */
+export function flacTags(path: string): Record<string, string> | null {
   let fd: number | undefined;
   try {
     fd = openSync(path, "r");
@@ -81,16 +88,24 @@ export function explicitOf(path: string): boolean | null {
     if (read(0, 4).toString("latin1") !== "fLaC") return null;
     for (let pos = 4, last = false; !last;) {
       const h = read(pos, 4);
-      if (h.length < 4) return null;
+      if (h.length < 4) return {};
       last = (h[0] & 0x80) !== 0;
       const len = h.readUIntBE(1, 3);
-      if ((h[0] & 0x7f) === 4) {   // VORBIS_COMMENT
-        const tag = /(?:^|\0)ITUNESADVISORY=(\d)/i.exec(read(pos + 4, len).toString("latin1").replace(/[\x01-\x1f]/g, "\0"));
-        return tag ? tag[1] === "1" : null;
+      if ((h[0] & 0x7f) === 4) {   // VORBIS_COMMENT: proveedor, número de comentarios y "CLAVE=valor" (UTF-8)
+        const b = read(pos + 4, len), tags: Record<string, string> = {};
+        let p = 4 + b.readUInt32LE(0);
+        const n = b.readUInt32LE(p);
+        p += 4;
+        for (let i = 0; i < n && p + 4 <= b.length; i++) {
+          const l = b.readUInt32LE(p), text = b.subarray(p + 4, p + 4 + l).toString("utf8"), eq = text.indexOf("=");
+          p += 4 + l;
+          if (eq > 0) tags[text.slice(0, eq).toUpperCase()] ??= text.slice(eq + 1);
+        }
+        return tags;
       }
       pos += 4 + len;
     }
-    return null;
+    return {};
   } catch {
     return null;
   } finally {

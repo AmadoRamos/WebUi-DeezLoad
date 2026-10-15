@@ -14,6 +14,13 @@ pistas (GET ALL) y descarga los archivos a una carpeta.
   cambie (tildes, ñ, "(Album Version)", signos).
 - **Resistente a un bot lento**: reconoce qué está mostrando el bot y se recupera solo cuando tarda o
   responde otra cosa.
+- **Historial que sobrevive a un reinicio**: las descargas y discografías siguen en la bandeja y lo
+  que se cortó al cerrar el servidor se retoma solo.
+- **Biblioteca**: lo que ya tienes, por artista y álbum, con los álbumes a los que les faltan
+  canciones y un botón para completarlos.
+- **Para después**: apunta álbumes o canciones y descárgalos cuando quieras o cada día a una hora.
+- **Importar listas**: pega «Artista - Título» o un CSV de Spotify y se descargan (o se apuntan).
+- **Novedades**: sigue a tus artistas y entérate (o descarga solo) cuando saquen un disco.
 
 > Proyecto personal. Úsalo solo con música que tengas derecho a descargar.
 
@@ -24,6 +31,9 @@ pistas (GET ALL) y descarga los archivos a una carpeta.
 ├── .env            credenciales y tiempos (se crea a partir de env.example; no se sube)
 ├── env.example     plantilla del .env
 ├── ajustes.json    ajustes de la interfaz (descargas a la vez, versión, pausas…)
+├── historial.json  descargas y discografías (se crea solo; no se sube)
+├── deseos.json     lo apuntado «para después» (se crea solo; no se sube)
+├── seguidos.json   artistas que sigues y sus discos nuevos (se crea solo; no se sube)
 ├── downloads/      la música (no se sube)
 ├── webui/          la interfaz web (index.html)
 └── node/           servidor y bot en Node.js + GramJS (detalles en node/README.md)
@@ -53,10 +63,13 @@ El resto de tiempos y reintentos (`QUIET_SECONDS`, `MAX_WAIT`, `FILES_WAIT`, `BO
 interfaz y se aplican al momento: cuántas descargas a la vez, con qué versión
 quedarse si una canción es explícita y limpia (`explicita`, `limpia` o `cualquiera`), hasta cuántas
 canciones que faltan se piden una a una (`una_a_una_max`; por defecto `UNA_A_UNA_MAX`) y la pausa entre
-álbumes de una discografía (`pausa_discografia`; por defecto `DISC_PAUSE`):
+álbumes de una discografía (`pausa_discografia`; por defecto `DISC_PAUSE`), a qué hora se descarga
+cada día lo apuntado «para después» (`deseos_hora`, de 0 a 23; `-1` solo a mano) y qué hacer cuando
+un artista que sigues saca un disco (`novedades`: `avisar` o `descargar`):
 
 ```json
-{ "descargas_simultaneas": 5, "version": "cualquiera", "una_a_una_max": 10, "pausa_discografia": 5 }
+{ "descargas_simultaneas": 5, "version": "cualquiera", "una_a_una_max": 10, "pausa_discografia": 5,
+  "deseos_hora": 3, "novedades": "avisar" }
 ```
 
 En el mismo menú se activan los avisos del sistema (Windows, macOS…) al terminar una descarga, con la

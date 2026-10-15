@@ -55,7 +55,7 @@ it("SSE: 'estado' con todo al conectar, 'cambios' solo con lo que cambió y ping
   const { events, pings, text } = await listening;
   assert.ok(text.startsWith("retry: 3000\n\n"));
   assert.equal(events[0][0], "estado");
-  assert.deepEqual(Object.keys(events[0][1]).sort(), ["actividad", "ahora", "ajustes", "discografias", "jobs"]);
+  assert.deepEqual(Object.keys(events[0][1]).sort(), ["actividad", "ahora", "ajustes", "contadores", "discografias", "jobs"]);
   const changes = events.slice(1);
   assert.ok(changes.length >= 3, `pocos cambios: ${changes.length}`);
   assert.ok(changes.every(([name]) => name === "cambios"));

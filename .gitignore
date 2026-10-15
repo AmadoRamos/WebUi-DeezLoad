@@ -9,6 +9,12 @@ downloads/
 # Dependencias y entornos
 node/node_modules/
 
+# Estado local: historial de descargas, «para después» y artistas que sigues
+historial.json
+deseos.json
+seguidos.json
+*.tmp
+
 # Logs, salidas de prueba y respaldos
 logs/
 *.log

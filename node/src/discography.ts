@@ -13,6 +13,8 @@ import type { Msg } from "./types.js";
 /** Lo que la discografía necesita del bot (en las pruebas se usa un doble). */
 export type DiscBot = Pick<Bot, "albums" | "albumCardDirect" | "albumCardInList" | "backToList" | "collectGetAll">;
 
+export interface DiscCtx { bot: DiscBot; downloader: Downloader; turn: Mutex; pauseSeconds: number; notify: () => void }
+
 export interface DiscAlbum {
   title: string; section: string;
   status: "pending" | "running" | "retry" | "completed" | "exists" | "error" | "canceled";
@@ -48,7 +50,7 @@ export class Discography {
   constructor(
     public artist: string, public name: string, public index: number,
     albums: { title: string; section?: string }[],
-    private ctx: { bot: DiscBot; downloader: Downloader; turn: Mutex; pauseSeconds: number; notify: () => void },
+    private ctx: DiscCtx,
   ) {
     // Si elegiste las dos versiones de un álbum («X 🅴» y «X») y prefieres una, solo esa.
     const want = ctx.downloader.settings.version;
@@ -58,6 +60,27 @@ export class Discography {
     this.omitted = albums.filter((a) => drop(a.title)).map((a) => a.title);
     this.albums = albums.filter((a) => !drop(a.title))
       .map((a) => ({ title: a.title, section: a.section || "", status: "pending", job_id: null, error: null }));
+  }
+
+  /** Lo que se guarda en el historial. */
+  save() {
+    const { id, artist, name, index, albums, omitted, status, created, finished, cancelRequested } = this;
+    return { id, artist, name, index, albums, omitted, status, created, finished, cancelRequested };
+  }
+
+  /** Una discografía del historial. Si no había terminado, vuelve a la cola: los álbumes que
+   *  estaban en curso o fallaron se piden otra vez (en el mismo trabajo) y los listos se saltan.
+   *  Si estaba en pausa, sigue en pausa. */
+  static restore(d: ReturnType<Discography["save"]>, ctx: DiscCtx): Discography {
+    const disc = new Discography(d.artist, d.name, d.index, [], ctx);
+    const ended = d.status === "completed" || d.status === "canceled";
+    Object.assign(disc, {
+      id: d.id, omitted: d.omitted ?? [], created: d.created, finished: d.finished ?? null, cancelRequested: !!d.cancelRequested,
+      albums: d.albums.map((a) => ({ ...a, status: !ended && ["running", "retry", "error"].includes(a.status) ? "pending" : a.status })),
+      status: ended ? d.status : "queued",
+    });
+    if (d.status === "paused") disc.pause();
+    return disc;
   }
 
   toDict() {
@@ -107,12 +130,14 @@ export class Discography {
     return audios;
   };
 
-  private async album(k: number, retry = false): Promise<boolean> {
+  /** Descarga el álbum k. Si ya tenía un trabajo (segundo intento, o se cortó al cerrar el
+   *  servidor), se repite ese mismo. */
+  private async album(k: number): Promise<boolean> {
     const { downloader, notify } = this.ctx;
     const album = this.albums[k];
     this.current = k; album.status = "running"; album.error = null;
     notify();
-    let job = retry && album.job_id ? downloader.jobs.get(album.job_id) : undefined;
+    let job = album.job_id ? downloader.jobs.get(album.job_id) : undefined;
     if (job) job.resetForRetry();
     else {
       job = new DownloadJob(this.artist, album.title, this.index);
@@ -154,6 +179,7 @@ export class Discography {
       await turn.run(async () => {
         const failed: number[] = [];
         for (let k = 0; k < this.albums.length; k++) {
+          if (this.albums[k].status !== "pending") continue;   // ya listo (discografía retomada)
           if (!(await this.gate())) return;
           if (!(await this.album(k))) failed.push(k);
           const pause = this.ctx.pauseSeconds;   // se lee cada vez: cambiarla en Ajustes vale también aquí
@@ -167,7 +193,7 @@ export class Discography {
         for (const k of failed) {  // un segundo intento para los que fallaron
           if (!(await this.gate())) return;
           this.albums[k].status = "retry";
-          await this.album(k, true);
+          await this.album(k);
         }
       });
     } finally {

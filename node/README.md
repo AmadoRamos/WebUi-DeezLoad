@@ -69,6 +69,38 @@ no muestra todas las canciones, una no se encuentra…), se usa GET ALL como sie
 tienes se salta al bajar. La tarjeta de la descarga va diciendo cuál pide («1 de 3 que faltan»).
 En `logs\bot.log` queda cuánto tardó cada canción y cada GET ALL, para ajustar ese número.
 
+## Historial, biblioteca, «para después», importar y novedades
+
+Arriba, junto al logo, están **Biblioteca**, **Para después**, **Novedades** e **Importar lista**.
+Lo que se guarda va en archivos junto a `ajustes.json` (no se suben a git).
+
+- **Historial** (`historial.json`): las descargas y discografías siguen en la bandeja tras reiniciar
+  el servidor (las 300 últimas terminadas). Lo que se cortó al cerrarlo se retoma solo: las
+  descargas sueltas se piden otra vez, y las discografías siguen por el álbum en que iban (sin
+  repetir los que ya estaban listos; si estaban en pausa, siguen en pausa). «Quitar las
+  terminadas», en la bandeja, las borra de la lista y del historial.
+- **Biblioteca**: lo que hay en la carpeta de descargas, por artista y álbum. El álbum y el número
+  de pista salen de las etiquetas del FLAC; un archivo sin ellas (otro formato) va en «Canciones
+  sueltas». Un álbum está incompleto si tiene menos canciones que las que dice su etiqueta
+  `TRACKTOTAL`; si no la tiene, «Preguntar a Deezer» busca cuántas pistas tiene. «Completar» lo
+  descarga como siempre: se piden solo las que faltan (una a una o con GET ALL, según
+  `una_a_una_max`). «Ver sus álbumes en el bot» busca al artista.
+- **Para después** (`deseos.json`): «☆ Para después» en la ficha de un álbum o ☆ en los resultados de
+  canciones. Se descargan con «Descargar» o, si en ⚙ Ajustes eliges una hora, solos una vez al día
+  a esa hora. Las canciones se buscan en el bot por título y artista (la de ese álbum, si se sabe).
+- **Importar lista**: pega canciones, una por línea «Artista - Título» (también numeradas, o solo
+  el título), o un CSV con cabecera como el de Exportify (Spotify): columnas «Track Name» y «Artist
+  Name(s)»; de varios artistas se usa el primero. Se puede abrir un `.csv` o `.txt`. Las que ya
+  tienes y las repetidas se saltan; las demás se descargan o se apuntan para después (500 como
+  mucho de una vez). Cada una se busca en el bot por título y artista y se elige la primera que
+  coincida (sin distinguir tildes ni «(Album Version)»); si no hay ninguna, esa descarga falla con
+  «El bot no encontró…».
+- **Novedades** (`seguidos.json`): «Seguir» en la página de un artista. Al seguirlo se apuntan sus
+  lanzamientos en Deezer; cada 12 horas (o con «Buscar ahora») se vuelve a mirar y lo que no estaba
+  aparece en Novedades, con un aviso. Desde ahí: descargar, apuntar para después o descartar. Si en
+  ⚙ Ajustes eliges «Descargarlo», se descargan solos (de la versión explícita y la limpia del mismo
+  disco, la que prefieres) y no quedan en la lista.
+
 ## Búsqueda directa de álbum
 
 Para abrir un álbum hacía falta buscar al artista, pulsar ALBUMS y recorrer todas las páginas de la
@@ -159,7 +191,7 @@ Si el bot no reacciona ni insistiendo, el error sale en menos de un minuto (3 pu
 npm test
 ```
 
-202 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
+211 pruebas: lista paginada en los dos modos del bot y 4 estilos de flechas, álbumes con
 nombres engañosos ("Quiero Más", "Back in Black"), discografía con BACK, espera tras GET ALL,
 traducción de mensajes de GramJS y las peticiones que se envían a Telegram.
 Descargas en secuencia y hasta 5 a la vez (con cambio en caliente y orden por álbum),
@@ -174,6 +206,9 @@ Descargas con el permiso del archivo caducado (FILE_REFERENCE_EXPIRED): se vuelv
 mensaje al chat y se repite la descarga una vez.
 Búsqueda directa de álbum: elige el del artista pedido (no otro con el mismo título), no toca la
 lista y acepta el título sin tildes.
+Historial (guardar, retomar lo cortado, limpiar), biblioteca (etiquetas del FLAC, álbumes
+incompletos, total de Deezer), «para después» (a su hora, una vez al día), importar listas (texto
+y CSV) y novedades (seguir, buscar, descargar solas la versión que prefieres).
 
 `npx tsx test/support/serve-stub.ts 8772 <carpeta> <ajustes.json> ../webui` arranca el servidor
 con un bot de mentira (sin Telegram), útil para probar la interfaz.
